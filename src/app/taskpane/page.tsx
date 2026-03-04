@@ -56,7 +56,6 @@ export default function TaskpanePage() {
   const [senderEmail, setSenderEmail] = useState("");
   const [subject, setSubject] = useState("");
   const [attachments, setAttachments] = useState<AttachmentInfo[]>([]);
-  const [orderId, setOrderId] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState("");
 
   useEffect(() => {
@@ -127,8 +126,7 @@ export default function TaskpanePage() {
 
       if (!res.ok) throw new Error("Failed to create order");
 
-      const order = await res.json();
-      setOrderId(order.id);
+      await res.json();
       setState("success");
     } catch (e) {
       setErrorMsg(e instanceof Error ? e.message : "Something went wrong");
@@ -251,16 +249,14 @@ export default function TaskpanePage() {
                 The order has been sent to the Hexa Platform for processing.
               </p>
             </div>
-            {orderId && (
-              <a
-                href={`${window.location.origin}/orders/${orderId}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 rounded-lg border bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
-              >
-                View in Platform
-              </a>
-            )}
+            <a
+              href={`${window.location.origin}/orders`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-lg border bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
+            >
+              View in Platform
+            </a>
           </div>
         )}
 
