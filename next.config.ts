@@ -9,7 +9,7 @@ const nextConfig: NextConfig = {
           {
             key: "Content-Security-Policy",
             value:
-              "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline' https://appsforoffice.microsoft.com; style-src 'self' 'unsafe-inline'; frame-ancestors https://*.office.com https://*.office365.com https://*.outlook.com https://*.microsoft.com;",
+              "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline' https://appsforoffice.microsoft.com; style-src 'self' 'unsafe-inline'; frame-ancestors https://*.office.com https://*.office365.com https://*.outlook.com https://*.microsoft.com https://*.live.com https://*.officeapps.live.com;",
           },
         ],
       },
