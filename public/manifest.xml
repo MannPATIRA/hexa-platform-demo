@@ -6,7 +6,7 @@
   xmlns:mailappor="http://schemas.microsoft.com/office/mailappversionoverrides/1.0"
   xsi:type="MailApp">
 
-  <!-- IMPORTANT: Replace YOUR_VERCEL_DOMAIN with your actual Vercel URL, e.g. hexa-platform-demo.vercel.app -->
+  <!-- Domain: hexa-platform-demo.vercel.app -->
 
   <Id>a1b2c3d4-e5f6-7890-abcd-ef1234567890</Id>
   <Version>1.0.0.0</Version>
@@ -14,12 +14,12 @@
   <DefaultLocale>en-US</DefaultLocale>
   <DisplayName DefaultValue="Hexa Platform" />
   <Description DefaultValue="Send email attachments to the Hexa Platform for order processing and item matching." />
-  <IconUrl DefaultValue="https://YOUR_VERCEL_DOMAIN/icon-64.png" />
-  <HighResolutionIconUrl DefaultValue="https://YOUR_VERCEL_DOMAIN/icon-128.png" />
-  <SupportUrl DefaultValue="https://YOUR_VERCEL_DOMAIN" />
+  <IconUrl DefaultValue="https://hexa-platform-demo.vercel.app/icon-64.png" />
+  <HighResolutionIconUrl DefaultValue="https://hexa-platform-demo.vercel.app/icon-128.png" />
+  <SupportUrl DefaultValue="https://hexa-platform-demo.vercel.app" />
 
   <AppDomains>
-    <AppDomain>https://YOUR_VERCEL_DOMAIN</AppDomain>
+    <AppDomain>https://hexa-platform-demo.vercel.app</AppDomain>
   </AppDomains>
 
   <Hosts>
@@ -35,7 +35,7 @@
   <FormSettings>
     <Form xsi:type="ItemRead">
       <DesktopSettings>
-        <SourceLocation DefaultValue="https://YOUR_VERCEL_DOMAIN/taskpane" />
+        <SourceLocation DefaultValue="https://hexa-platform-demo.vercel.app/taskpane" />
         <RequestedHeight>450</RequestedHeight>
       </DesktopSettings>
     </Form>
@@ -87,12 +87,12 @@
 
     <Resources>
       <bt:Images>
-        <bt:Image id="Icon16" DefaultValue="https://YOUR_VERCEL_DOMAIN/icon-16.png" />
-        <bt:Image id="Icon32" DefaultValue="https://YOUR_VERCEL_DOMAIN/icon-32.png" />
-        <bt:Image id="Icon80" DefaultValue="https://YOUR_VERCEL_DOMAIN/icon-80.png" />
+        <bt:Image id="Icon16" DefaultValue="https://hexa-platform-demo.vercel.app/icon-16.png" />
+        <bt:Image id="Icon32" DefaultValue="https://hexa-platform-demo.vercel.app/icon-32.png" />
+        <bt:Image id="Icon80" DefaultValue="https://hexa-platform-demo.vercel.app/icon-80.png" />
       </bt:Images>
       <bt:Urls>
-        <bt:Url id="TaskpaneUrl" DefaultValue="https://YOUR_VERCEL_DOMAIN/taskpane" />
+        <bt:Url id="TaskpaneUrl" DefaultValue="https://hexa-platform-demo.vercel.app/taskpane" />
       </bt:Urls>
       <bt:ShortStrings>
         <bt:String id="GroupLabel" DefaultValue="Hexa Platform" />
