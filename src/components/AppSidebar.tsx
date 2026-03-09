@@ -48,9 +48,9 @@ export default function AppSidebar({ activeItem }: AppSidebarProps) {
   };
 
   return (
-    <aside className="flex h-full w-[248px] flex-shrink-0 flex-col border-r border-border bg-background/70">
+    <aside className="side-pane-dark flex h-full w-[248px] flex-shrink-0 flex-col border-r border-white/15">
       <div className="px-4 pb-6 pt-5">
-        <HexaLogo size={24} showText textClassName="text-base text-foreground" />
+        <HexaLogo size={24} showText textClassName="text-base text-white" />
       </div>
 
       <nav className="flex-1 space-y-1 px-2 overflow-y-auto">
@@ -67,12 +67,12 @@ export default function AppSidebar({ activeItem }: AppSidebarProps) {
                   className={cn(
                     "relative flex w-full items-center gap-2.5 px-3 py-2 text-sm transition-colors",
                     active
-                      ? "bg-accent text-accent-foreground"
-                      : "text-muted-foreground hover:bg-accent/60 hover:text-foreground"
+                      ? "bg-white/15 text-white"
+                      : "text-white/75 hover:bg-white/10 hover:text-white"
                   )}
                 >
                   {active && (
-                    <div className="absolute left-0 top-1/2 h-[18px] w-[2px] -translate-y-1/2 rounded-r bg-primary" />
+                    <div className="absolute left-0 top-1/2 h-[18px] w-[2px] -translate-y-1/2 rounded-r bg-white" />
                   )}
                   <item.icon size={15} strokeWidth={active ? 2 : 1.7} />
                   <span>{item.name}</span>
@@ -91,8 +91,8 @@ export default function AppSidebar({ activeItem }: AppSidebarProps) {
                       className={cn(
                         "relative flex items-center gap-2.5 px-3 py-2 text-sm transition-colors",
                         active
-                          ? "bg-accent text-accent-foreground"
-                          : "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
+                          ? "bg-white/15 text-white"
+                          : "text-white/75 hover:bg-white/10 hover:text-white",
                         isDisabled && "cursor-default opacity-50"
                       )}
                     >
@@ -118,8 +118,8 @@ export default function AppSidebar({ activeItem }: AppSidebarProps) {
                         className={cn(
                           "flex items-center pl-10 pr-3 py-1.5 text-[13px] transition-colors",
                           subActive
-                            ? "text-foreground font-medium"
-                            : "text-muted-foreground hover:text-foreground"
+                            ? "text-white font-medium"
+                            : "text-white/75 hover:text-white"
                         )}
                       >
                         {s.name}
@@ -133,15 +133,15 @@ export default function AppSidebar({ activeItem }: AppSidebarProps) {
         })}
       </nav>
 
-      <div className="mx-3 mb-3 flex items-center gap-3 border border-border bg-card p-3">
+      <div className="mx-3 mb-3 flex items-center gap-3 border border-white/15 bg-white/5 p-3">
         <Avatar className="h-9 w-9">
           <AvatarFallback className="bg-primary text-xs font-semibold text-primary-foreground">
             JM
           </AvatarFallback>
         </Avatar>
         <div className="flex-1 min-w-0">
-          <p className="truncate text-sm font-medium text-foreground">James Morrison</p>
-          <p className="mt-0.5 truncate text-xs text-muted-foreground">Sales Manager</p>
+          <p className="truncate text-sm font-medium text-white">James Morrison</p>
+          <p className="mt-0.5 truncate text-xs text-white/75">Sales Manager</p>
         </div>
         <div className="h-2 w-2 flex-shrink-0 rounded-full bg-emerald-400" />
       </div>

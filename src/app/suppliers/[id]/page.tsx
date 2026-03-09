@@ -21,12 +21,12 @@ import {
   metricLabels,
 } from "@/data/sla-data";
 import type { RiskTier, Recommendation, Status } from "@/data/sla-data";
-import { ArrowLeft, Building2, ChevronRight, User, ShieldAlert } from "lucide-react";
+import { ArrowLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 function RiskTierLabel({ tier }: { tier: RiskTier }) {
   return (
-    <span className="text-sm text-muted-foreground">
+    <span className="text-muted-foreground">
       {tier.charAt(0) + tier.slice(1).toLowerCase()} risk
     </span>
   );
@@ -83,36 +83,30 @@ export default function SupplierPage() {
 
   return (
     <div className="flex flex-col w-full">
-      <div className="flex items-start justify-between border-b border-border bg-card px-7 py-5">
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2 text-[13px] text-muted-foreground mb-1">
-            <Link href="/suppliers" className="hover:text-foreground transition-colors">
-              Suppliers
-            </Link>
-            <ChevronRight className="h-3.5 w-3.5" />
-            <span className="text-foreground">{supplier.name}</span>
-          </div>
-          <div className="flex items-center gap-3">
-            <h1 className="font-display text-[22px] font-medium leading-none text-foreground">
-              {supplier.name}
-            </h1>
-            <RiskTierLabel tier={supplier.riskTier} />
-          </div>
-          <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
-            <span className="flex items-center gap-1">
-              <Building2 className="h-3.5 w-3.5" />
-              {supplier.category}
-            </span>
-            <span className="flex items-center gap-1">
-              <User className="h-3.5 w-3.5" />
-              {supplier.accountOwner}
-            </span>
-            <span className="flex items-center gap-1">
-              <ShieldAlert className="h-3.5 w-3.5" />
-              {openCount} open claims · £{totalCredits.toLocaleString()} total
-            </span>
-          </div>
+      <div className="border-b border-border bg-card px-7 py-5">
+        <div className="flex items-center gap-2 text-[13px] text-muted-foreground mb-3">
+          <Link href="/suppliers" className="hover:text-foreground transition-colors">
+            Suppliers
+          </Link>
+          <ChevronRight className="h-3.5 w-3.5 shrink-0" />
+          <span className="text-foreground">{supplier.name}</span>
         </div>
+        <h1 className="font-display text-[22px] font-medium leading-none text-foreground">
+          {supplier.name}
+        </h1>
+        <p className="mt-2 text-[13px] text-muted-foreground">
+          {supplier.category}
+          {" · "}
+          {supplier.accountOwner}
+          {" · "}
+          <RiskTierLabel tier={supplier.riskTier} />
+          {openCount > 0 && (
+            <>
+              {" · "}
+              {openCount} open claims — £{totalCredits.toLocaleString()} total
+            </>
+          )}
+        </p>
       </div>
 
       <div className="px-7 pb-8 pt-6 space-y-6">
@@ -154,22 +148,22 @@ export default function SupplierPage() {
                         <TableCell className="text-right text-muted-foreground">{p.totalUnits.toLocaleString()}</TableCell>
                         <TableCell className="text-right text-muted-foreground">£{p.totalValue.toLocaleString()}</TableCell>
                         <TableCell className="text-right">
-                          <span className={p.onTimeDelivery < 90 ? "text-destructive font-medium" : ""}>
+                          <span className={p.onTimeDelivery < 90 ? "text-rose-800 font-medium" : ""}>
                             {p.onTimeDelivery}%
                           </span>
                         </TableCell>
                         <TableCell className="text-right">
-                          <span className={p.fillRate < 95 ? "text-destructive font-medium" : ""}>
+                          <span className={p.fillRate < 95 ? "text-rose-800 font-medium" : ""}>
                             {p.fillRate}%
                           </span>
                         </TableCell>
                         <TableCell className="text-right">
-                          <span className={p.qualityPpm > 300 ? "text-destructive font-medium" : ""}>
+                          <span className={p.qualityPpm > 300 ? "text-rose-800 font-medium" : ""}>
                             {p.qualityPpm}
                           </span>
                         </TableCell>
                         <TableCell className="text-right">
-                          <span className={p.avgResponseHours > 48 ? "text-destructive font-medium" : ""}>
+                          <span className={p.avgResponseHours > 48 ? "text-rose-800 font-medium" : ""}>
                             {p.avgResponseHours}h
                           </span>
                         </TableCell>
@@ -202,10 +196,10 @@ export default function SupplierPage() {
                               <div
                                 className={`h-full ${
                                   p.onTimeDelivery >= 90
-                                    ? "bg-emerald-500"
+                                    ? "bg-emerald-700"
                                     : p.onTimeDelivery >= 80
-                                    ? "bg-amber-500"
-                                    : "bg-red-500"
+                                    ? "bg-amber-700"
+                                    : "bg-rose-800"
                                 }`}
                                 style={{ width: `${p.onTimeDelivery}%` }}
                               />
@@ -236,10 +230,10 @@ export default function SupplierPage() {
                               <div
                                 className={`h-full ${
                                   p.fillRate >= 95
-                                    ? "bg-emerald-500"
+                                    ? "bg-emerald-700"
                                     : p.fillRate >= 85
-                                    ? "bg-amber-500"
-                                    : "bg-red-500"
+                                    ? "bg-amber-700"
+                                    : "bg-rose-800"
                                 }`}
                                 style={{ width: `${p.fillRate}%` }}
                               />

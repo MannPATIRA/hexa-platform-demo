@@ -37,6 +37,13 @@ export function QuotePanel({
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
 
+  const customerFirstName = order.customer.name.split(" ")[0];
+  const quoteNumber = order.orderNumber.replace("ORD", "Q");
+  const defaultSubject = `${quoteNumber} — ${order.customer.company}`;
+  const [toEmail, setToEmail] = useState(order.customer.email);
+  const [fromEmail, setFromEmail] = useState("sales@hexa-orders.com");
+  const [subject, setSubject] = useState(defaultSubject);
+
   const subtotal = resolvedItems.reduce(
     (sum, { lineItem, catalogItem }) =>
       sum + catalogItem.catalogPrice * lineItem.parsedQuantity,
@@ -48,9 +55,6 @@ export function QuotePanel({
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     });
-
-  const customerFirstName = order.customer.name.split(" ")[0];
-  const quoteNumber = order.orderNumber.replace("ORD", "Q");
 
   const handleSend = () => {
     setSending(true);
@@ -185,31 +189,34 @@ export function QuotePanel({
 
           {/* Email preview card */}
           <div className="border border-t-0 border-border bg-card">
-            {/* Email headers */}
-            <div className="space-y-1.5 border-b border-border px-5 py-3.5">
-              <div className="flex items-baseline gap-3 text-[12px]">
-                <span className="w-12 shrink-0 text-right text-muted-foreground">
-                  To
-                </span>
-                <span className="text-foreground/85">
-                  {order.customer.email}
-                </span>
+            {/* Email headers — editable across all 3 format tabs */}
+            <div className="space-y-2 border-b border-border px-5 py-3.5">
+              <div className="flex items-center gap-3 text-[12px]">
+                <label className="w-12 shrink-0 text-right text-muted-foreground">To</label>
+                <input
+                  type="email"
+                  value={toEmail}
+                  onChange={(e) => setToEmail(e.target.value)}
+                  className="min-w-0 flex-1 rounded border border-border bg-background px-2 py-1.5 text-foreground/85 focus:outline-none focus:ring-1 focus:ring-ring"
+                />
               </div>
-              <div className="flex items-baseline gap-3 text-[12px]">
-                <span className="w-12 shrink-0 text-right text-muted-foreground">
-                  From
-                </span>
-                <span className="text-foreground/85">
-                  sales@hexa-orders.com
-                </span>
+              <div className="flex items-center gap-3 text-[12px]">
+                <label className="w-12 shrink-0 text-right text-muted-foreground">From</label>
+                <input
+                  type="email"
+                  value={fromEmail}
+                  onChange={(e) => setFromEmail(e.target.value)}
+                  className="min-w-0 flex-1 rounded border border-border bg-background px-2 py-1.5 text-foreground/85 focus:outline-none focus:ring-1 focus:ring-ring"
+                />
               </div>
-              <div className="flex items-baseline gap-3 text-[12px]">
-                <span className="w-12 shrink-0 text-right text-muted-foreground">
-                  Subject
-                </span>
-                <span className="font-medium text-foreground/85">
-                  {quoteNumber} &mdash; {order.customer.company}
-                </span>
+              <div className="flex items-center gap-3 text-[12px]">
+                <label className="w-12 shrink-0 text-right text-muted-foreground">Subject</label>
+                <input
+                  type="text"
+                  value={subject}
+                  onChange={(e) => setSubject(e.target.value)}
+                  className="min-w-0 flex-1 rounded border border-border bg-background px-2 py-1.5 font-medium text-foreground/85 focus:outline-none focus:ring-1 focus:ring-ring"
+                />
               </div>
             </div>
 

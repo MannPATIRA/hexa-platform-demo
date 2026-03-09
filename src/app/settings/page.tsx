@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import DemoNavigationCard from "@/components/settings/DemoNavigationCard";
 
 export default function SettingsPage() {
   return (
@@ -95,6 +96,8 @@ export default function SettingsPage() {
             </table>
           </CardContent>
         </Card>
+
+        <DemoNavigationCard />
 
         <Card>
           <CardHeader className="border-b">
