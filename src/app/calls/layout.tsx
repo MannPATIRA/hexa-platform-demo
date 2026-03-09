@@ -1,8 +1,6 @@
 import AppSidebar from "@/components/AppSidebar";
 
-export const dynamic = "force-dynamic";
-
-export default function OrdersLayout({
+export default function CallsLayout({
   children,
 }: {
   children: React.ReactNode;

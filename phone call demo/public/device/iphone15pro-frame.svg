@@ -1,0 +1,36 @@
+<svg width="390" height="844" viewBox="0 0 390 844" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="metal" x1="25" y1="20" x2="365" y2="824" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#84888E"/>
+      <stop offset="0.22" stop-color="#C7CCD3"/>
+      <stop offset="0.48" stop-color="#70757D"/>
+      <stop offset="0.72" stop-color="#B8BEC8"/>
+      <stop offset="1" stop-color="#686D75"/>
+    </linearGradient>
+    <linearGradient id="innerMetal" x1="38" y1="36" x2="352" y2="808" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1A1D21"/>
+      <stop offset="0.5" stop-color="#0B0D10"/>
+      <stop offset="1" stop-color="#181B20"/>
+    </linearGradient>
+    <radialGradient id="screenVignette" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(195 422) rotate(90) scale(350 185)">
+      <stop stop-color="white" stop-opacity="0"/>
+      <stop offset="1" stop-color="#000000" stop-opacity="0.22"/>
+    </radialGradient>
+  </defs>
+
+  <g>
+    <rect x="16" y="8" width="358" height="812" rx="60" fill="url(#metal)"/>
+    <rect x="25" y="17" width="340" height="794" rx="54" fill="url(#innerMetal)"/>
+    <rect x="35" y="27" width="320" height="774" rx="50" fill="#000000"/>
+    <rect x="35.5" y="27.5" width="319" height="773" rx="49.5" stroke="white" stroke-opacity="0.09"/>
+
+    <rect x="132" y="41" width="126" height="36" rx="18" fill="#020202"/>
+    <ellipse cx="198" cy="59" rx="35" ry="3.5" fill="white" fill-opacity="0.07"/>
+
+    <rect x="35" y="27" width="320" height="774" rx="50" fill="url(#screenVignette)"/>
+
+    <rect x="18" y="196" width="4" height="72" rx="2" fill="#6F747C"/>
+    <rect x="18" y="300" width="4" height="72" rx="2" fill="#6F747C"/>
+    <rect x="368" y="234" width="4" height="100" rx="2" fill="#6F747C"/>
+  </g>
+</svg>

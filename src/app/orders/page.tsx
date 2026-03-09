@@ -1,99 +1,144 @@
 import Link from "next/link";
 import { getAllOrders } from "@/lib/store";
 import { Badge } from "@/components/ui/badge";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Package, ArrowRight } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Package, Search } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
 export default async function OrdersPage() {
   const orders = await getAllOrders();
+  const pendingCount = orders.filter((o) => o.status === "pending").length;
 
   return (
-    <div className="p-7">
-      <div className="mb-6">
-        <h1 className="font-display text-[22px] font-medium leading-none text-foreground">
-          Orders
-        </h1>
-        <p className="mt-2 text-[13px] text-muted-foreground">
-          Manage incoming distributor orders and review parsed line items.
-        </p>
+    <div className="flex h-full flex-col bg-card">
+      <div className="flex items-center justify-between border-b border-border px-7 py-4">
+        <div>
+          <h1 className="font-display text-2xl font-medium leading-none text-foreground">
+            Orders
+          </h1>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            Manage incoming distributor orders and parsed line items
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <Search
+              size={13}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+            />
+            <Input
+              readOnly
+              value="Search orders..."
+              className="h-9 w-52 border-border bg-background pl-8 text-xs text-muted-foreground"
+            />
+          </div>
+          <Badge
+            variant="secondary"
+            className={
+              pendingCount > 0
+                ? "gap-2 border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-amber-700"
+                : "gap-2 border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-emerald-600"
+            }
+          >
+            <span className="text-xs font-semibold">
+              {pendingCount > 0 ? `${pendingCount} Pending` : "All Fulfilled"}
+            </span>
+          </Badge>
+        </div>
       </div>
 
-      <div className="border border-border bg-card shadow-sm">
-        <Table>
-          <TableHeader>
-            <TableRow className="border-border hover:bg-transparent">
-              <TableHead className="w-[140px]">Order</TableHead>
-              <TableHead>Customer</TableHead>
-              <TableHead>Company</TableHead>
-              <TableHead>Subject</TableHead>
-              <TableHead className="text-center">Items</TableHead>
-              <TableHead className="text-center">Status</TableHead>
-              <TableHead className="text-right">Date</TableHead>
-              <TableHead className="w-[40px]" />
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {orders.map((order) => (
-              <TableRow key={order.id} className="group border-border">
-                <TableCell>
-                  <Link
-                    href={`/orders/${order.id}`}
-                    className="flex items-center gap-2 font-medium text-foreground/85 hover:text-foreground"
-                  >
-                    <Package className="h-4 w-4 text-muted-foreground" />
-                    {order.orderNumber}
-                  </Link>
-                </TableCell>
-                <TableCell className="text-foreground/80">
-                  {order.customer.name}
-                </TableCell>
-                <TableCell className="text-muted-foreground">
-                  {order.customer.company}
-                </TableCell>
-                <TableCell className="max-w-[200px] truncate text-muted-foreground">
-                  {order.emailSubject}
-                </TableCell>
-                <TableCell className="text-center text-foreground/80">
-                  {order.totalItems}
-                </TableCell>
-                <TableCell className="text-center">
-                  <Badge
-                    variant="outline"
-                    className={
-                      order.status === "pending"
-                        ? "border-amber-500/30 bg-amber-500/10 text-amber-700"
-                        : "border-emerald-500/30 bg-emerald-500/10 text-emerald-700"
-                    }
-                  >
-                    {order.status === "pending" ? "Pending" : "Fulfilled"}
-                  </Badge>
-                </TableCell>
-                <TableCell className="text-right text-muted-foreground">
-                  {new Date(order.createdAt).toLocaleDateString("en-US", {
-                    month: "short",
-                    day: "numeric",
-                    year: "numeric",
-                  })}
-                </TableCell>
-                <TableCell>
-                  <Link href={`/orders/${order.id}`}>
-                    <ArrowRight className="h-4 w-4 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
-                  </Link>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+      <div className="flex items-center border-b border-border px-7 py-2">
+        <div className="flex-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+          Order
+        </div>
+        <div className="w-60 text-right text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+          Subject
+        </div>
+        <div className="w-16 text-right text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+          Items
+        </div>
+        <div className="w-28 text-right text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+          Status
+        </div>
+        <div className="w-28 text-right text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+          Date
+        </div>
       </div>
+
+      <ScrollArea className="flex-1">
+        <div className="space-y-1.5 px-4 py-3">
+          {orders.map((order) => {
+            const initials = order.customer.name
+              .split(" ")
+              .map((n) => n[0])
+              .join("");
+
+            return (
+              <Link
+                key={order.id}
+                href={`/orders/${order.id}`}
+                className="group block w-full border text-left transition-all duration-200 border-border bg-background/30 cursor-pointer hover:border-primary/60 hover:bg-primary/5"
+              >
+                <div className="flex items-center px-4 py-3.5">
+                  <div className="flex flex-1 items-center gap-3.5">
+                    <Avatar className="h-9 w-9">
+                      <AvatarFallback className="bg-muted text-xs font-semibold text-muted-foreground">
+                        {initials}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <p className="text-[13px] font-medium leading-tight text-foreground/85">
+                        {order.orderNumber}
+                      </p>
+                      <p className="mt-0.5 text-[11px] text-muted-foreground">
+                        {order.customer.name} &middot; {order.customer.company}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="w-60 text-right">
+                    <p className="truncate text-[12px] text-muted-foreground">
+                      {order.emailSubject}
+                    </p>
+                  </div>
+
+                  <div className="w-16 text-right">
+                    <p className="text-[12px] text-foreground/80">
+                      {order.totalItems}
+                    </p>
+                  </div>
+
+                  <div className="w-28 flex justify-end">
+                    <Badge
+                      variant="outline"
+                      className={
+                        order.status === "pending"
+                          ? "border-amber-500/30 bg-amber-500/10 px-3 py-1 text-[11px] font-semibold text-amber-700"
+                          : "border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-[11px] font-semibold text-emerald-600"
+                      }
+                    >
+                      {order.status === "pending" ? "Pending" : "Fulfilled"}
+                    </Badge>
+                  </div>
+
+                  <div className="w-28 text-right">
+                    <p className="text-[12px] text-muted-foreground">
+                      {new Date(order.createdAt).toLocaleDateString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                      })}
+                    </p>
+                  </div>
+                </div>
+              </Link>
+            );
+          })}
+        </div>
+      </ScrollArea>
     </div>
   );
 }
