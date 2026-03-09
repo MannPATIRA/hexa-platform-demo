@@ -1,4 +1,4 @@
-import { LineItem, MatchStatus } from "@/lib/types";
+import { LineItem, CatalogItem, MatchStatus } from "@/lib/types";
 import { LineItemCard } from "./LineItemCard";
 
 function countByStatus(items: LineItem[]): Record<MatchStatus, number> {
@@ -14,7 +14,17 @@ function countByStatus(items: LineItem[]): Record<MatchStatus, number> {
   );
 }
 
-export function LineItemsPanel({ items }: { items: LineItem[] }) {
+interface LineItemsPanelProps {
+  items: LineItem[];
+  resolutions?: Record<string, CatalogItem>;
+  onResolve?: (lineItemId: string, catalogItem: CatalogItem) => void;
+}
+
+export function LineItemsPanel({
+  items,
+  resolutions,
+  onResolve,
+}: LineItemsPanelProps) {
   const counts = countByStatus(items);
 
   return (
@@ -55,7 +65,16 @@ export function LineItemsPanel({ items }: { items: LineItem[] }) {
         {items
           .sort((a, b) => a.lineNumber - b.lineNumber)
           .map((item) => (
-            <LineItemCard key={item.id} item={item} />
+            <LineItemCard
+              key={item.id}
+              item={item}
+              resolvedCatalogItem={
+                resolutions ? (resolutions[item.id] ?? null) : undefined
+              }
+              onResolve={
+                onResolve ? (ci) => onResolve(item.id, ci) : undefined
+              }
+            />
           ))}
       </div>
     </div>

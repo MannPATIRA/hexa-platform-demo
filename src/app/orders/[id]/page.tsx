@@ -4,7 +4,7 @@ import { getOrderById } from "@/lib/store";
 import { Badge } from "@/components/ui/badge";
 import { CustomerCard } from "@/components/CustomerCard";
 import { AttachmentViewer } from "@/components/AttachmentViewer";
-import { LineItemsPanel } from "@/components/LineItemsPanel";
+import { OrderWorkspace } from "@/components/OrderWorkspace";
 import { ArrowLeft, Calendar, Mail } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -80,9 +80,7 @@ export default async function OrderDetailPage({
           </div>
         </div>
         <div className="xl:col-span-3">
-          <div className="border border-border bg-card p-6 shadow-sm">
-            <LineItemsPanel items={order.lineItems} />
-          </div>
+          <OrderWorkspace order={order} />
         </div>
       </div>
     </div>

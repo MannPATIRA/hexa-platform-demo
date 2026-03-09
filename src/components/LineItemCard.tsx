@@ -6,13 +6,33 @@ import { MatchStatusBadge } from "./MatchStatusBadge";
 import { AlertCircle } from "lucide-react";
 import { SkuSelector } from "./SkuSelector";
 
-export function LineItemCard({ item }: { item: LineItem }) {
-  const [selectedCatalogItem, setSelectedCatalogItem] =
+interface LineItemCardProps {
+  item: LineItem;
+  resolvedCatalogItem?: CatalogItem | null;
+  onResolve?: (catalogItem: CatalogItem) => void;
+}
+
+export function LineItemCard({
+  item,
+  resolvedCatalogItem,
+  onResolve,
+}: LineItemCardProps) {
+  const [internalSelected, setInternalSelected] =
     useState<CatalogItem | null>(
       item.matchStatus === "confirmed" && item.matchedCatalogItems.length > 0
         ? item.matchedCatalogItems[0]
         : null
     );
+
+  const isControlled = resolvedCatalogItem !== undefined;
+  const selectedCatalogItem = isControlled
+    ? resolvedCatalogItem
+    : internalSelected;
+
+  const handleSelect = (ci: CatalogItem) => {
+    if (onResolve) onResolve(ci);
+    if (!isControlled) setInternalSelected(ci);
+  };
 
   const displaySku = selectedCatalogItem?.catalogSku ?? item.parsedSku;
   const displayPrice = selectedCatalogItem?.catalogPrice ?? item.parsedUnitPrice;
@@ -67,7 +87,7 @@ export function LineItemCard({ item }: { item: LineItem }) {
           matchStatus={item.matchStatus}
           selectedItem={selectedCatalogItem}
           recommendedItems={item.matchedCatalogItems}
-          onSelect={setSelectedCatalogItem}
+          onSelect={handleSelect}
         />
       </div>
 
