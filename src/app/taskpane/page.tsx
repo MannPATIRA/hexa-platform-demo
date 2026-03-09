@@ -22,6 +22,15 @@ import {
   type AttachmentKind,
 } from "@/lib/attachment-utils";
 
+interface OfficeAttachmentDetails {
+  id: string;
+  name: string;
+  size: number;
+  contentType: string;
+  attachmentType: string;
+  isInline: boolean;
+}
+
 declare global {
   interface Window {
     Office?: {
@@ -31,17 +40,8 @@ declare global {
           item: {
             from: { displayName: string; emailAddress: string };
             subject: string;
-            getAttachmentsAsync: (
-              callback: (result: {
-                value: {
-                  id: string;
-                  name: string;
-                  size: number;
-                  contentType: string;
-                }[];
-              }) => void
-            ) => void;
-            getAttachmentContentAsync: (
+            attachments: OfficeAttachmentDetails[];
+            getAttachmentContentAsync?: (
               id: string,
               callback: (result: {
                 status: string;
@@ -105,9 +105,17 @@ function readAttachmentContent(
         return;
       }
       item.getAttachmentContentAsync(attachmentId, (result) => {
-        if (result.status === "succeeded" && result.value?.content) {
-          resolve(result.value.content);
-        } else {
+        try {
+          if (
+            result &&
+            result.status === "succeeded" &&
+            result.value?.content
+          ) {
+            resolve(result.value.content);
+          } else {
+            resolve(null);
+          }
+        } catch {
           resolve(null);
         }
       });
@@ -115,6 +123,18 @@ function readAttachmentContent(
       resolve(null);
     }
   });
+}
+
+function getAttachmentList(
+  item: NonNullable<Window["Office"]>["context"]["mailbox"]["item"]
+): OfficeAttachmentDetails[] {
+  try {
+    const list = item.attachments;
+    if (Array.isArray(list)) return list;
+  } catch {
+    /* attachments property not available */
+  }
+  return [];
 }
 
 function AttachmentMiniPreview({ att }: { att: AttachmentInfo }) {
@@ -364,26 +384,25 @@ function TaskpaneContent() {
     script.src =
       "https://appsforoffice.microsoft.com/lib/1.1/hosted/office.js";
     script.onload = () => {
-      window.Office?.onReady(() => {
+      window.Office?.onReady(async () => {
         try {
           const item = window.Office!.context.mailbox.item;
           setSenderName(item.from.displayName);
           setSenderEmail(item.from.emailAddress);
           setSubject(item.subject);
 
-          item.getAttachmentsAsync(async (result) => {
-            const files = result.value.filter((a) =>
-              isNotInlineSignature(a.contentType, a.name)
-            );
+          const allAttachments = getAttachmentList(item);
+          const files = allAttachments.filter(
+            (a) => !a.isInline && isNotInlineSignature(a.contentType, a.name)
+          );
 
-            const withContent: AttachmentInfo[] = [];
-            for (const file of files) {
-              const content = await readAttachmentContent(item, file.id);
-              withContent.push({ ...file, content: content ?? undefined });
-            }
-            setAttachments(withContent);
-            setState("ready");
-          });
+          const withContent: AttachmentInfo[] = [];
+          for (const file of files) {
+            const content = await readAttachmentContent(item, file.id);
+            withContent.push({ ...file, content: content ?? undefined });
+          }
+          setAttachments(withContent);
+          setState("ready");
         } catch {
           setState("ready");
         }

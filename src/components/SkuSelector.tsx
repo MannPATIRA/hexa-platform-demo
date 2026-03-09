@@ -190,7 +190,7 @@ export function SkuSelector({
             {/* Recommended section */}
             {filteredRecommended.length > 0 && (
               <div>
-                <div className="sticky top-0 z-10 flex items-center gap-1.5 border-b border-amber-200/60 bg-amber-50 px-3 py-1.5 dark:border-amber-500/20 dark:bg-amber-950/80">
+                <div className="sticky top-0 z-10 flex items-center gap-1.5 border-b border-amber-200/30 bg-amber-50/40 px-3 py-1.5 dark:border-amber-500/10 dark:bg-amber-950/30">
                   <Star className="h-3 w-3 text-amber-600" />
                   <span className="text-[10px] font-semibold uppercase tracking-wider text-amber-700">
                     Suggested Matches
