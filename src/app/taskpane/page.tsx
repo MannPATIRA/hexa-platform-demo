@@ -21,6 +21,7 @@ import {
   parseCsv,
   type AttachmentKind,
 } from "@/lib/attachment-utils";
+import { parsePurchaseOrderWithFallback } from "@/lib/po-parser";
 
 interface OfficeAttachmentDetails {
   id: string;
@@ -143,78 +144,77 @@ function AttachmentMiniPreview({ att }: { att: AttachmentInfo }) {
   if (!att.content) return null;
 
   if (kind === "csv") {
+    let data;
     try {
       const raw = decodeBase64Content(att.content);
-      const data = parseCsv(raw);
-      if (data.headers.length === 0) return null;
-      const previewRows = data.rows.slice(0, 3);
-      return (
-        <div className="mt-1.5 max-h-[120px] overflow-hidden border border-border bg-card">
-          <table className="w-full border-collapse text-[10px]">
-            <thead>
-              <tr className="border-b border-border bg-muted/60">
-                {data.headers.slice(0, 4).map((h, i) => (
-                  <th
-                    key={i}
-                    className="px-1.5 py-1 text-left text-[9px] font-medium uppercase tracking-wider text-muted-foreground"
-                  >
-                    {h.length > 12 ? h.slice(0, 12) + "…" : h}
-                  </th>
-                ))}
-                {data.headers.length > 4 && (
-                  <th className="px-1.5 py-1 text-[9px] text-muted-foreground">
-                    +{data.headers.length - 4}
-                  </th>
-                )}
-              </tr>
-            </thead>
-            <tbody>
-              {previewRows.map((row, ri) => (
-                <tr key={ri} className="border-b border-border">
-                  {row.slice(0, 4).map((cell, ci) => (
-                    <td
-                      key={ci}
-                      className="truncate px-1.5 py-1 text-foreground/70"
-                      style={{ maxWidth: 80 }}
-                    >
-                      {cell || "—"}
-                    </td>
-                  ))}
-                  {data.headers.length > 4 && (
-                    <td className="px-1.5 py-1 text-muted-foreground">…</td>
-                  )}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {data.rows.length > 3 && (
-            <div className="border-t border-border bg-muted/30 px-1.5 py-0.5 text-center text-[9px] text-muted-foreground">
-              +{data.rows.length - 3} more rows
-            </div>
-          )}
-        </div>
-      );
+      data = parseCsv(raw);
     } catch {
       return null;
     }
+
+    if (data.headers.length === 0) return null;
+    const previewRows = data.rows.slice(0, 3);
+
+    return (
+      <div className="mt-1.5 max-h-[120px] overflow-hidden border border-border bg-card">
+        <table className="w-full border-collapse text-[10px]">
+          <thead>
+            <tr className="border-b border-border bg-muted/60">
+              {data.headers.slice(0, 4).map((h, i) => (
+                <th
+                  key={i}
+                  className="px-1.5 py-1 text-left text-[9px] font-medium uppercase tracking-wider text-muted-foreground"
+                >
+                  {h.length > 12 ? h.slice(0, 12) + "…" : h}
+                </th>
+              ))}
+              {data.headers.length > 4 && (
+                <th className="px-1.5 py-1 text-[9px] text-muted-foreground">
+                  +{data.headers.length - 4}
+                </th>
+              )}
+            </tr>
+          </thead>
+          <tbody>
+            {previewRows.map((row, ri) => (
+              <tr key={ri} className="border-b border-border">
+                {row.slice(0, 4).map((cell, ci) => (
+                  <td
+                    key={ci}
+                    className="truncate px-1.5 py-1 text-foreground/70"
+                    style={{ maxWidth: 80 }}
+                  >
+                    {cell || "—"}
+                  </td>
+                ))}
+                {data.headers.length > 4 && (
+                  <td className="px-1.5 py-1 text-muted-foreground">…</td>
+                )}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {data.rows.length > 3 && (
+          <div className="border-t border-border bg-muted/30 px-1.5 py-0.5 text-center text-[9px] text-muted-foreground">
+            +{data.rows.length - 3} more rows
+          </div>
+        )}
+      </div>
+    );
   }
 
   if (kind === "image") {
-    try {
-      const src = `data:${att.contentType};base64,${att.content}`;
-      return (
-        <div className="mt-1.5 overflow-hidden border border-border">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={src}
-            alt={att.name}
-            className="h-auto max-h-[120px] w-full object-contain bg-muted/20"
-          />
-        </div>
-      );
-    } catch {
-      return null;
-    }
+    const src = `data:${att.contentType};base64,${att.content}`;
+    return (
+      <div className="mt-1.5 overflow-hidden border border-border">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={src}
+          alt={att.name}
+          className="h-auto max-h-[120px] w-full object-contain bg-muted/20"
+        />
+      </div>
+    );
   }
 
   if (kind === "html") {
@@ -418,11 +418,37 @@ function TaskpaneContent() {
     setState("sending");
 
     try {
+      const attachmentTexts = attachments
+        .map((a) => {
+          if (!a.content) return "";
+          try {
+            return decodeBase64Content(a.content);
+          } catch {
+            return "";
+          }
+        })
+        .filter(Boolean);
+      const parsedPoData = parsePurchaseOrderWithFallback({
+        streamLabel: "taskpane:email",
+        subject,
+        bodyText: subject,
+        extraText: attachmentTexts,
+        attachments: attachments.map((a) => ({
+          id: a.id,
+          fileName: a.name,
+          mimeType: a.contentType,
+          size: a.size,
+          url: "/attachment-placeholder",
+          ...(a.content ? { content: a.content } : {}),
+        })),
+      });
+
       const baseUrl = window.location.origin;
       const res = await fetch(`${baseUrl}/api/orders`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          source: "email",
           senderName,
           senderEmail,
           emailSubject: subject,
@@ -435,7 +461,7 @@ function TaskpaneContent() {
               ? senderEmail.split("@")[1]?.split(".")[0] || "Unknown"
               : "Unknown",
             billingAddress: "Not provided",
-            shippingAddress: "Not provided",
+            shippingAddress: parsedPoData.shipTo || "Not provided",
           },
           attachments: attachments.map((a) => ({
             id: `att-${Date.now()}-${a.id.slice(-6)}`,
@@ -445,6 +471,9 @@ function TaskpaneContent() {
             url: "/attachment-placeholder",
             ...(a.content ? { content: a.content } : {}),
           })),
+          parsedPoData,
+          rawInputText: [subject, ...attachmentTexts].join("\n"),
+          ingestionSourceLabel: "taskpane:email",
         }),
       });
 

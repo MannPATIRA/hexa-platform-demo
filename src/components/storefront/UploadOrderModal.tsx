@@ -21,12 +21,14 @@ import {
 } from "lucide-react";
 import {
   saveCart,
+  saveStorefrontIntakeContext,
   simulateMatching,
   getDefaultCartItems,
   getCartItemsForSample,
   RECENT_UPLOADS,
   type RecentUpload,
 } from "@/lib/cart-utils";
+import { parsePurchaseOrderWithFallback } from "@/lib/po-parser";
 
 type Tab = "recent" | "upload" | "dictate" | "type";
 type Phase = "input" | "processing" | "done";
@@ -140,22 +142,49 @@ export default function UploadOrderModal({
     }
 
     let items;
+    let rawInputText = "";
     if (tab === "recent" && selectedSample) {
       items = getCartItemsForSample(selectedSample);
+      const selectedRecent = RECENT_UPLOADS.find(
+        (sample) => sample.id === selectedSample
+      );
+      rawInputText = selectedRecent
+        ? `${selectedRecent.label}\n${selectedRecent.description}`
+        : selectedSample;
     } else if (tab === "type" && textInput.trim()) {
       items = simulateMatching(textInput);
+      rawInputText = textInput.trim();
     } else if (tab === "dictate" && transcript.trim()) {
       items = simulateMatching(transcript);
+      rawInputText = transcript.trim();
+    } else if (tab === "upload" && file) {
+      const fileText = await file.text().catch(() => "");
+      items = fileText ? simulateMatching(fileText) : getDefaultCartItems();
+      rawInputText = fileText || file.name;
     } else {
       items = getDefaultCartItems();
+      rawInputText = "";
     }
 
+    const parsedPoData = parsePurchaseOrderWithFallback({
+      streamLabel: `storefront:${tab}`,
+      fileName: file?.name,
+      bodyText: rawInputText,
+      extraText: selectedSample ? [selectedSample] : undefined,
+    });
+
     saveCart(items);
+    saveStorefrontIntakeContext({
+      stream: tab,
+      fileName: file?.name,
+      rawInputText,
+      parsedPoData,
+    });
     setPhase("done");
     await new Promise((r) => setTimeout(r, 400));
     onClose();
     router.push("/storefront/cart");
-  }, [tab, textInput, transcript, selectedSample, onClose, router]);
+  }, [tab, textInput, transcript, selectedSample, onClose, router, file]);
 
   const fileIcon = (f: File) => {
     if (f.type.startsWith("image/")) return <ImageIcon className="w-8 h-8" />;
@@ -165,7 +194,7 @@ export default function UploadOrderModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+        className="absolute inset-0 bg-[#001a33]/60 backdrop-blur-md"
         onClick={onClose}
       />
 
@@ -174,23 +203,25 @@ export default function UploadOrderModal({
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
         transition={{ duration: 0.2 }}
-        className="relative bg-white rounded-xl shadow-2xl w-full max-w-xl mx-4 overflow-hidden"
+        className="relative flex flex-col rounded-xl shadow-2xl w-full max-w-xl mx-4 overflow-hidden border-l-4 border-[#E63312]"
       >
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[#E9ECEF]">
-          <h2 className="text-lg font-bold text-[#212529]">
+        {/* Header - Hexa navy */}
+        <div className="flex items-center justify-between px-6 py-4 bg-[#003366] border-b border-white/10">
+          <h2 className="text-lg font-semibold text-white">
             {phase === "input" ? "Upload Your Order" : "Processing Order"}
           </h2>
           {phase === "input" && (
             <button
               onClick={onClose}
-              className="text-[#6C757D] hover:text-[#212529] transition-colors cursor-pointer"
+              className="text-white/80 hover:text-white transition-colors cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
           )}
         </div>
 
+        {/* Body - light content area */}
+        <div className="bg-[#F8F9FA] border border-t-0 border-[#003366]/10 rounded-b-xl">
         <AnimatePresence mode="wait">
           {phase === "input" ? (
             <motion.div
@@ -200,8 +231,8 @@ export default function UploadOrderModal({
               exit={{ opacity: 0 }}
               className="p-6"
             >
-              {/* Tabs */}
-              <div className="flex gap-1 bg-[#F1F3F5] rounded-lg p-1 mb-5">
+              {/* Tabs - Hexa-accented */}
+              <div className="flex gap-1 bg-[#003366]/8 border border-[#003366]/15 rounded-lg p-1 mb-5">
                 {(
                   [
                     { id: "recent", label: "Recent", icon: Clock },
@@ -216,7 +247,7 @@ export default function UploadOrderModal({
                     className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-md text-sm font-medium transition-all cursor-pointer ${
                       tab === id
                         ? "bg-white text-[#003366] shadow-sm"
-                        : "text-[#6C757D] hover:text-[#212529]"
+                        : "text-[#495057] hover:text-[#003366]"
                     }`}
                   >
                     <Icon className="w-4 h-4" />
@@ -359,7 +390,7 @@ export default function UploadOrderModal({
                       value={textInput}
                       onChange={(e) => setTextInput(e.target.value)}
                       placeholder={`Enter items, one per line or separated by commas.\n\nExamples:\n24 bearing kits IBK-400\n60 stainless flanges 3 inch\n100 hex bolts M12\n10 safety glasses`}
-                      className="w-full h-48 border border-[#CED4DA] rounded-lg p-4 text-sm text-[#212529] placeholder:text-[#ADB5BD] focus:outline-none focus:border-[#003366] resize-none"
+                      className="w-full h-48 border border-[#CED4DA] rounded-lg p-4 text-sm text-[#212529] placeholder:text-[#ADB5BD] focus:outline-none focus:border-[#003366] focus:ring-2 focus:ring-[#003366]/20 resize-none"
                     />
                   </div>
                 )}
@@ -372,7 +403,7 @@ export default function UploadOrderModal({
                 className={`w-full mt-5 py-3 rounded-lg text-sm font-semibold transition-all cursor-pointer flex items-center justify-center gap-2 ${
                   hasInput
                     ? "bg-[#E63312] hover:bg-[#CC2200] text-white"
-                    : "bg-[#E9ECEF] text-[#ADB5BD] cursor-not-allowed"
+                    : "bg-[#003366]/20 text-[#495057] cursor-not-allowed"
                 }`}
               >
                 <File className="w-4 h-4" />
@@ -397,7 +428,7 @@ export default function UploadOrderModal({
                   }}
                   className="w-12 h-12 rounded-full border-3 border-[#E9ECEF] border-t-[#003366] mb-4"
                 />
-                <p className="text-sm font-medium text-[#6C757D]">
+                <p className="text-sm font-medium text-[#495057]">
                   Analyzing your order...
                 </p>
               </div>
@@ -463,6 +494,7 @@ export default function UploadOrderModal({
             </motion.div>
           )}
         </AnimatePresence>
+        </div>
       </motion.div>
     </div>
   );

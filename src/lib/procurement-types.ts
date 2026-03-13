@@ -1,6 +1,7 @@
 export type ProcurementSource = "erp_alert" | "engineering_request";
 export type ProcurementStatus = "flagged" | "under_review" | "rfq_drafted" | "rfq_sent" | "po_raised";
 export type ProcurementPriority = "critical" | "high" | "medium" | "low";
+export type ProcurementRecommendedAction = "po" | "rfq";
 export type RequestUrgency = "routine" | "urgent" | "critical";
 export type RequestCategory = "raw_material" | "standard_component" | "custom_part" | "tooling" | "consumable" | "other";
 export type RFQStatus = "draft" | "sent";
@@ -46,6 +47,11 @@ export interface ProcurementItem {
   attachments: ProcurementAttachment[];
   preferredSupplierId: string;
   stockHistory: StockHistoryPoint[];
+  // Optional automation metadata for ERP/MRP-driven routing.
+  isAutomated?: boolean;
+  automationSource?: "erp_mrp";
+  recommendedAction?: ProcurementRecommendedAction;
+  routingReason?: string;
 }
 
 export interface StockHistoryPoint {
@@ -128,6 +134,30 @@ export interface ERPScanConfig {
   alertEmail: boolean;
   watchedItemIds: string[];
   customReorderPoints: Record<string, { reorderPoint: number; maxStock: number }>;
+}
+
+export type OpenPOStatus =
+  | "confirmed"
+  | "shipped"
+  | "partial_shipped"
+  | "in_transit"
+  | "delivered"
+  | "delayed"
+  | "exception"
+  | "cancelled";
+
+export interface OpenPO {
+  id: string;
+  itemId: string;
+  supplierId: string;
+  quantity: number;
+  orderDate: string;
+  expectedDelivery: string;
+  status: OpenPOStatus;
+  trackingRef?: string;
+  carrier?: "ups" | "fedex" | "dhl" | "shipstation" | "manual" | "other";
+  latestUpdateAt?: string;
+  exceptionReason?: string;
 }
 
 export interface ProcurementFilters {

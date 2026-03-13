@@ -1,5 +1,5 @@
 import { Redis } from "@upstash/redis";
-import { Order } from "./types";
+import { Order, ShipmentSummary } from "./types";
 import { mockOrders } from "./mock-data";
 
 // ---------------------------------------------------------------------------
@@ -68,6 +68,12 @@ async function kvAdd(redis: Redis, order: Order): Promise<Order> {
   return order;
 }
 
+async function kvUpdate(redis: Redis, order: Order): Promise<Order> {
+  await kvSeed(redis);
+  await redis.set(`${ORDER_PREFIX}${order.id}`, JSON.stringify(order));
+  return order;
+}
+
 async function kvDelete(redis: Redis, idsToDelete: string[]): Promise<void> {
   await kvSeed(redis);
   const allIds: string[] = (await redis.get(ORDERS_KEY)) ?? [];
@@ -113,6 +119,28 @@ export async function addOrder(order: Order): Promise<Order> {
   if (r) return kvAdd(r, order);
   mem.unshift(order);
   return order;
+}
+
+export async function updateOrder(order: Order): Promise<Order> {
+  const r = getRedis();
+  if (r) return kvUpdate(r, order);
+  const index = mem.findIndex((o) => o.id === order.id);
+  if (index === -1) {
+    mem.unshift(order);
+  } else {
+    mem[index] = order;
+  }
+  return order;
+}
+
+export async function setOrderShipmentSummary(
+  orderId: string,
+  shipmentSummary: ShipmentSummary
+): Promise<Order | undefined> {
+  const order = await getOrderById(orderId);
+  if (!order) return undefined;
+  const updated: Order = { ...order, shipmentSummary };
+  return updateOrder(updated);
 }
 
 export async function deleteOrders(ids: string[]): Promise<void> {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { X, Package, Wrench, Calendar, Mail } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -10,12 +10,24 @@ import type {
   ProcurementItem,
   ProcurementStatus,
 } from "@/lib/procurement-types";
+import {
+  getSupplier,
+  getSupplierHistoriesForItem,
+  getDaysOfStockRemaining,
+  getRecommendedProcurementAction,
+  getProcurementRoutingReason,
+  isAutoErpMrpItem,
+} from "@/data/procurement-data";
+import UrgencyBanner from "./UrgencyBanner";
 import InventorySection from "./InventorySection";
-import SupplierHistorySection from "./SupplierHistorySection";
+import StockTrendChart from "./StockTrendChart";
+import SupplierComparisonTable from "./SupplierComparisonTable";
 import CoOrderSection from "./CoOrderSection";
+import OpenPOsSection from "./OpenPOsSection";
 import EngineeringRequestDetails from "./EngineeringRequestDetails";
 import OrderQuantitySection from "./OrderQuantitySection";
 import DraftRFQSection from "./DraftRFQSection";
+import ActionBar from "./ActionBar";
 
 const statusLabels: Record<ProcurementStatus, string> = {
   flagged: "Flagged",
@@ -43,6 +55,11 @@ export default function ItemDetailPanel({ item, onClose }: ItemDetailPanelProps)
     item.preferredSupplierId ? [item.preferredSupplierId] : []
   );
 
+  // Stable RFQ reference generated once per panel open
+  const [rfqRef] = useState(
+    () => `RFQ-${item.id.replace("pi-", "").toUpperCase()}-${Date.now().toString(36).slice(-4).toUpperCase()}`
+  );
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -53,6 +70,90 @@ export default function ItemDetailPanel({ item, onClose }: ItemDetailPanelProps)
 
   const isEngineering = item.source === "engineering_request";
   const SourceIcon = isEngineering ? Wrench : Package;
+
+  const hasOrderHistory = useMemo(() => {
+    const histories = getSupplierHistoriesForItem(item.id);
+    return histories.some((h) => selectedSupplierIds.includes(h.supplierId) && h.totalOrders12mo > 0);
+  }, [item.id, selectedSupplierIds]);
+  const recommendedAction = useMemo(() => getRecommendedProcurementAction(item), [item]);
+  const routingReason = useMemo(() => getProcurementRoutingReason(item), [item]);
+  const isAutoRouted = useMemo(() => isAutoErpMrpItem(item), [item]);
+
+  const handleToggleSupplier = (id: string) => {
+    setSelectedSupplierIds((prev) =>
+      prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]
+    );
+  };
+
+  const buildRFQPayload = useCallback(() => {
+    if (selectedSupplierIds.length === 0) return;
+
+    const histories = getSupplierHistoriesForItem(item.id);
+    const preferred = histories.find((h) => selectedSupplierIds.includes(h.supplierId));
+    const leadTime = preferred?.avgLeadTimeDays ?? histories[0]?.avgLeadTimeDays ?? 14;
+    const daysRemaining = getDaysOfStockRemaining(item);
+
+    const deliveryDate = (() => {
+      const d = new Date("2026-03-09");
+      d.setDate(d.getDate() + (daysRemaining === Infinity ? leadTime + 7 : Math.max(daysRemaining, leadTime)));
+      return d.toISOString().split("T")[0];
+    })();
+
+    const quantity =
+      item.source === "engineering_request"
+        ? item.maxStock || 25
+        : Math.max(item.maxStock - item.currentStock, item.reorderPoint);
+
+    const unitPrice = preferred?.lastUnitPrice ?? histories[0]?.lastUnitPrice ?? 0;
+    const supplier = getSupplier(selectedSupplierIds[0]);
+    if (!supplier) return;
+
+    return {
+      rfqRef,
+      itemName: item.name,
+      itemSku: item.sku,
+      itemDescription: item.description,
+      technicalSpecs: item.technicalSpecs,
+      attachments: item.attachments,
+      supplierName: supplier.name,
+      supplierEmail: supplier.contactEmail,
+      quantity,
+      unitPrice,
+      deliveryDate,
+    };
+  }, [rfqRef, item, selectedSupplierIds]);
+
+  const handleSendRFQ = useCallback(async () => {
+    const payload = buildRFQPayload();
+    if (!payload) return;
+
+    const res = await fetch("/api/procurement/send-rfq", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error((err as { message?: string }).message || "Failed to send RFQ");
+    }
+  }, [buildRFQPayload]);
+
+  const handleSaveRFQDraft = useCallback(async () => {
+    const payload = buildRFQPayload();
+    if (!payload) return;
+
+    const res = await fetch("/api/procurement/save-rfq-draft", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error((err as { message?: string }).message || "Failed to save RFQ draft");
+    }
+  }, [buildRFQPayload]);
 
   return (
     <AnimatePresence>
@@ -72,7 +173,7 @@ export default function ItemDetailPanel({ item, onClose }: ItemDetailPanelProps)
           exit={{ x: "100%" }}
           transition={{ type: "spring", damping: 30, stiffness: 300 }}
         >
-          {/* Header — matches Orders detail page style */}
+          {/* Header */}
           <div className="flex-none border-b border-border bg-card px-7 py-5">
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0 flex-1">
@@ -122,43 +223,77 @@ export default function ItemDetailPanel({ item, onClose }: ItemDetailPanelProps)
             </div>
           </div>
 
-          {/* Content */}
+          {/* Urgency Banner */}
+          <div className="flex-none px-7 pt-5">
+            <UrgencyBanner item={item} />
+            {isAutoRouted && recommendedAction && (
+              <div className="mt-3 border border-border bg-card px-4 py-3">
+                <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+                  Automated ERP/MRP Routing
+                </p>
+                <p className="mt-1 text-[12px] text-foreground/80">
+                  Recommended path:{" "}
+                  <span className="font-medium">{recommendedAction === "po" ? "Raise PO" : "Send RFQ to new supplier"}</span>
+                </p>
+                {routingReason && <p className="mt-1 text-[12px] text-muted-foreground">{routingReason}</p>}
+              </div>
+            )}
+          </div>
+
+          {/* Two-Column Content */}
           <ScrollArea className="flex-1 overflow-hidden">
-            <div className="space-y-8 px-7 py-7">
+            <div className="px-7 py-5">
               {isEngineering ? (
-                <>
-                  <EngineeringRequestDetails itemId={item.id} />
-                  <SupplierHistorySection
-                    itemId={item.id}
-                    selectedSupplierIds={selectedSupplierIds}
-                    onToggleSupplier={(id) =>
-                      setSelectedSupplierIds((prev) =>
-                        prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]
-                      )
-                    }
-                  />
-                  <OrderQuantitySection item={item} selectedSupplierIds={selectedSupplierIds} />
-                  <DraftRFQSection item={item} selectedSupplierIds={selectedSupplierIds} />
-                </>
+                <div className="grid grid-cols-5 gap-6">
+                  {/* Left column: decision flow */}
+                  <div className="col-span-3 space-y-5">
+                    <EngineeringRequestDetails itemId={item.id} />
+                    <SupplierComparisonTable
+                      itemId={item.id}
+                      selectedSupplierIds={selectedSupplierIds}
+                      onToggleSupplier={handleToggleSupplier}
+                    />
+                    <OrderQuantitySection item={item} selectedSupplierIds={selectedSupplierIds} />
+                    <DraftRFQSection item={item} selectedSupplierIds={selectedSupplierIds} rfqRef={rfqRef} />
+                  </div>
+                  {/* Right column: context */}
+                  <div className="col-span-2 space-y-5">
+                    <OpenPOsSection itemId={item.id} />
+                  </div>
+                </div>
               ) : (
-                <>
-                  <InventorySection item={item} />
-                  <SupplierHistorySection
-                    itemId={item.id}
-                    selectedSupplierIds={selectedSupplierIds}
-                    onToggleSupplier={(id) =>
-                      setSelectedSupplierIds((prev) =>
-                        prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]
-                      )
-                    }
-                  />
-                  <CoOrderSection item={item} />
-                  <OrderQuantitySection item={item} selectedSupplierIds={selectedSupplierIds} />
-                  <DraftRFQSection item={item} selectedSupplierIds={selectedSupplierIds} />
-                </>
+                <div className="grid grid-cols-5 gap-6">
+                  {/* Left column: decision flow */}
+                  <div className="col-span-3 space-y-5">
+                    <InventorySection item={item} />
+                    <SupplierComparisonTable
+                      itemId={item.id}
+                      selectedSupplierIds={selectedSupplierIds}
+                      onToggleSupplier={handleToggleSupplier}
+                    />
+                    <OrderQuantitySection item={item} selectedSupplierIds={selectedSupplierIds} />
+                    <DraftRFQSection item={item} selectedSupplierIds={selectedSupplierIds} rfqRef={rfqRef} />
+                  </div>
+                  {/* Right column: context */}
+                  <div className="col-span-2 space-y-5">
+                    <StockTrendChart item={item} />
+                    <CoOrderSection item={item} />
+                    <OpenPOsSection itemId={item.id} />
+                  </div>
+                </div>
               )}
             </div>
           </ScrollArea>
+
+          {/* Sticky Action Bar */}
+          <ActionBar
+            hasSupplierSelected={selectedSupplierIds.length > 0}
+            hasOrderHistory={hasOrderHistory}
+            recommendedAction={recommendedAction}
+            onClose={onClose}
+            onSendRFQ={handleSendRFQ}
+            onSaveDraftRFQ={handleSaveRFQDraft}
+          />
         </motion.div>
       </div>
     </AnimatePresence>

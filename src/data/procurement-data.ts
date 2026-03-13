@@ -1,5 +1,6 @@
 import type {
   ProcurementItem,
+  ProcurementRecommendedAction,
   Supplier,
   SupplierItemHistory,
   CoOrderPattern,
@@ -7,6 +8,7 @@ import type {
   DraftRFQ,
   StockHistoryPoint,
   ERPScanConfig,
+  OpenPO,
 } from "@/lib/procurement-types";
 
 function generateStockHistory(currentStock: number, avgDaily: number, days: number): StockHistoryPoint[] {
@@ -395,6 +397,30 @@ export const procurementItems: ProcurementItem[] = [
     preferredSupplierId: "sup-005",
     stockHistory: generateStockHistory(3, 1.2, 90),
   },
+  {
+    id: "pi-013",
+    sku: "CTG-MTR-12AWG-500",
+    name: "12 AWG Control Cable (500ft spool)",
+    description: "Multi-conductor 12 AWG control cable for panel rewiring and automation retrofits. Triggered from ERP MRP demand spike.",
+    source: "erp_alert",
+    status: "flagged",
+    priority: "high",
+    currentStock: 2,
+    reorderPoint: 8,
+    maxStock: 40,
+    avgDailyConsumption: 1.1,
+    avgDailyConsumption30d: 1.4,
+    avgDailyConsumption90d: 1.1,
+    flaggedAt: "2026-03-09T09:35:00Z",
+    requestedBy: "System (ERP Scan)",
+    category: "standard_component",
+    attachments: [],
+    preferredSupplierId: "sup-005",
+    stockHistory: generateStockHistory(2, 1.1, 90),
+    isAutomated: true,
+    automationSource: "erp_mrp",
+    routingReason: "No supplier history found for this ERP/MRP signal; route to new-supplier RFQ.",
+  },
 ];
 
 // --- Supplier Item Histories ---
@@ -573,6 +599,40 @@ export const draftRFQs: DraftRFQ[] = [
   },
 ];
 
+// --- Open POs ---
+
+export const openPOs: OpenPO[] = [
+  {
+    id: "po-001",
+    itemId: "pi-005",
+    supplierId: "sup-007",
+    quantity: 60,
+    orderDate: "2026-03-03",
+    expectedDelivery: "2026-03-14",
+    status: "shipped",
+    trackingRef: "SCW-2026-4418",
+  },
+  {
+    id: "po-002",
+    itemId: "pi-006",
+    supplierId: "sup-008",
+    quantity: 200,
+    orderDate: "2026-03-01",
+    expectedDelivery: "2026-03-10",
+    status: "in_transit",
+    trackingRef: "PA-INV-88721",
+  },
+  {
+    id: "po-003",
+    itemId: "pi-002",
+    supplierId: "sup-006",
+    quantity: 300,
+    orderDate: "2026-03-07",
+    expectedDelivery: "2026-03-21",
+    status: "confirmed",
+  },
+];
+
 // --- ERP Scan Config ---
 
 export const defaultERPScanConfig: ERPScanConfig = {
@@ -580,7 +640,7 @@ export const defaultERPScanConfig: ERPScanConfig = {
   reorderPointSource: "erp",
   alertInApp: true,
   alertEmail: false,
-  watchedItemIds: ["pi-001", "pi-002", "pi-003", "pi-004", "pi-005", "pi-006", "pi-009", "pi-011", "pi-012"],
+  watchedItemIds: ["pi-001", "pi-002", "pi-003", "pi-004", "pi-005", "pi-006", "pi-009", "pi-011", "pi-012", "pi-013"],
   customReorderPoints: {},
 };
 
@@ -628,4 +688,40 @@ export function getItemsForSameSupplier(itemId: string, supplierId: string): Pro
   return procurementItems.filter(
     (i) => i.id !== itemId && i.preferredSupplierId === supplierId && (i.status === "flagged" || i.status === "under_review")
   );
+}
+
+export function getOpenPOsForItem(itemId: string): (OpenPO & { supplier: Supplier })[] {
+  return openPOs
+    .filter((po) => po.itemId === itemId)
+    .map((po) => ({ ...po, supplier: suppliers.find((s) => s.id === po.supplierId)! }))
+    .filter((po) => po.supplier);
+}
+
+export function getBestLeadTime(itemId: string): number {
+  const histories = supplierItemHistories.filter((h) => h.itemId === itemId);
+  if (histories.length === 0) return Infinity;
+  return Math.min(...histories.map((h) => h.avgLeadTimeDays));
+}
+
+export function isAutoErpMrpItem(item: ProcurementItem): boolean {
+  return item.source === "erp_alert" && (item.isAutomated ?? true);
+}
+
+export function hasSupplierHistory(itemId: string): boolean {
+  return supplierItemHistories.some((h) => h.itemId === itemId);
+}
+
+export function getRecommendedProcurementAction(
+  item: ProcurementItem
+): ProcurementRecommendedAction | null {
+  if (!isAutoErpMrpItem(item)) return null;
+  return hasSupplierHistory(item.id) ? "po" : "rfq";
+}
+
+export function getProcurementRoutingReason(item: ProcurementItem): string | null {
+  if (!isAutoErpMrpItem(item)) return null;
+  if (!hasSupplierHistory(item.id)) {
+    return "No supplier history for this ERP/MRP demand signal, so start with a new-supplier RFQ.";
+  }
+  return "Supplier history exists for this ERP/MRP demand signal, so default to a purchase order.";
 }

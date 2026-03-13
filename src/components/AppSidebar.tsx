@@ -9,6 +9,7 @@ import {
   FileText,
   PackageSearch,
   Truck,
+  Plug,
   Settings,
   ChevronDown,
   ChevronRight,
@@ -24,6 +25,7 @@ const navItems = [
   { name: "Procurement", icon: PackageSearch, href: "/procurement" },
   { name: "Claims", icon: FileText, href: "/claims" },
   { name: "Suppliers", icon: Truck, href: "/suppliers", expandable: true },
+  { name: "Integrations", icon: Plug, href: "/integrations" },
   { name: "Settings", icon: Settings, href: "/settings" },
 ];
 
@@ -43,6 +45,7 @@ export default function AppSidebar({ activeItem }: AppSidebarProps) {
     if (item.href === "/procurement") return pathname.startsWith("/procurement");
     if (item.href === "/claims") return pathname.startsWith("/claims");
     if (item.href === "/suppliers") return pathname.startsWith("/suppliers");
+    if (item.href === "/integrations") return pathname.startsWith("/integrations");
     if (item.href === "/settings") return pathname.startsWith("/settings");
     return pathname.startsWith(item.href);
   };

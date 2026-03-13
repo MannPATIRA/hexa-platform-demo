@@ -2,10 +2,19 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getOrderById } from "@/lib/store";
 import { Badge } from "@/components/ui/badge";
-import { CustomerCard } from "@/components/CustomerCard";
+import { CollapsibleCustomerCard } from "@/components/CollapsibleCustomerCard";
 import { AttachmentViewer } from "@/components/AttachmentViewer";
 import { OrderWorkspace } from "@/components/OrderWorkspace";
-import { ArrowLeft, Calendar, Mail } from "lucide-react";
+import {
+  ArrowLeft,
+  Calendar,
+  Mail,
+  AlertTriangle,
+  Truck,
+  CircleCheckBig,
+  ClipboardCheck,
+  CreditCard,
+} from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +30,10 @@ export default async function OrderDetailPage({
     notFound();
   }
 
+  const itemsNeedingAction = order.lineItems.filter(
+    (i) => i.matchStatus !== "confirmed"
+  ).length;
+
   return (
     <div className="p-7">
       <Link
@@ -31,11 +44,11 @@ export default async function OrderDetailPage({
         Back to Orders
       </Link>
 
-      <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
+      <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
         <div>
           <div className="flex items-center gap-3">
-            <h1 className="font-display text-[22px] font-medium leading-none text-foreground">
-              {order.orderNumber}
+            <h1 className="font-display text-[18px] font-medium leading-none text-foreground">
+              {order.customer.company}
             </h1>
             <Badge
               variant="outline"
@@ -47,14 +60,23 @@ export default async function OrderDetailPage({
             >
               {order.status === "pending" ? "Pending Review" : "Fulfilled"}
             </Badge>
+            {order.shipmentSummary && (
+              <Badge variant="outline" className="border-blue-500/30 bg-blue-500/10 text-blue-700">
+                {order.shipmentSummary.status
+                  .split("_")
+                  .map((part) => part[0].toUpperCase() + part.slice(1))
+                  .join(" ")}
+              </Badge>
+            )}
           </div>
-          <div className="mt-2 flex flex-wrap items-center gap-4 text-[13px] text-muted-foreground">
+          <div className="mt-2 flex flex-wrap items-center gap-4 text-[12px] text-muted-foreground">
+            <span className="font-mono">{order.orderNumber}</span>
             <span className="inline-flex items-center gap-1.5">
-              <Mail className="h-3.5 w-3.5" />
+              <Mail className="h-3 w-3" />
               {order.emailSubject}
             </span>
             <span className="inline-flex items-center gap-1.5">
-              <Calendar className="h-3.5 w-3.5" />
+              <Calendar className="h-3 w-3" />
               {new Date(order.createdAt).toLocaleDateString("en-US", {
                 weekday: "long",
                 month: "long",
@@ -62,16 +84,55 @@ export default async function OrderDetailPage({
                 year: "numeric",
               })}
             </span>
+            {order.dueDate && (
+              <span className="inline-flex items-center gap-1.5">
+                <Calendar className="h-3 w-3" />
+                Due {order.dueDate}
+              </span>
+            )}
+            {order.paymentTerms && (
+              <span className="inline-flex items-center gap-1.5">
+                <CreditCard className="h-3 w-3" />
+                {order.paymentTerms}
+              </span>
+            )}
+            {order.shipVia && (
+              <span className="inline-flex items-center gap-1.5">
+                <Truck className="h-3 w-3" />
+                {order.shipVia}
+              </span>
+            )}
+            <span
+              className={`inline-flex items-center gap-1.5 ${
+                order.mrpRoutingStatus === "pushed_to_mrp"
+                  ? "text-emerald-700"
+                  : "text-amber-700"
+              }`}
+            >
+              {order.mrpRoutingStatus === "pushed_to_mrp" ? (
+                <CircleCheckBig className="h-3 w-3" />
+              ) : (
+                <ClipboardCheck className="h-3 w-3" />
+              )}
+              {order.mrpRoutingStatus === "pushed_to_mrp"
+                ? "Pushed to MRP"
+                : "Staged for review"}
+            </span>
           </div>
         </div>
+
+        {order.status === "pending" && itemsNeedingAction > 0 && (
+          <div className="flex items-center gap-2 border border-amber-500/30 bg-amber-500/10 px-4 py-2">
+            <AlertTriangle className="h-4 w-4 text-amber-600" />
+            <span className="text-[13px] font-medium text-amber-700">
+              {itemsNeedingAction} item{itemsNeedingAction !== 1 ? "s" : ""} need
+              {itemsNeedingAction === 1 ? "s" : ""} your review
+            </span>
+          </div>
+        )}
       </div>
 
-      <div className="mb-8 border border-border bg-card p-6 shadow-sm">
-        <h2 className="mb-4 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-          Customer Details
-        </h2>
-        <CustomerCard customer={order.customer} />
-      </div>
+      <CollapsibleCustomerCard customer={order.customer} />
 
       <div className="grid grid-cols-1 gap-8 xl:grid-cols-5">
         <div className="xl:col-span-2">

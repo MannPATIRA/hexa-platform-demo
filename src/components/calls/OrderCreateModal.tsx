@@ -23,8 +23,9 @@ function mapExtractedToLineItems(): LineItem[] {
     parsedQuantity: parseFloat(item.qty.replace(/[^0-9.]/g, "")),
     parsedUom: item.qty.replace(/[0-9.]/g, "").trim(),
     parsedUnitPrice: parseFloat(item.unitPrice.replace(/[^0-9.]/g, "")),
+    requestedDueDate: item.deliveryBy,
     matchStatus: "confirmed" as const,
-    confidence: item.confidence / 100,
+    confidence: item.confidence,
     matchedCatalogItems: [],
     issues: [],
   }));
@@ -56,8 +57,13 @@ export default function OrderCreateModal({ onOrderCreated, onClose }: OrderCreat
           body: JSON.stringify({
             customer,
             lineItems,
+            source: "phone",
             emailSubject: "Phone Order – David Patterson (Sheffield Precision)",
             attachments: [],
+            dueDate: extractedItems[0]?.deliveryBy ?? null,
+            shipTo: extractedItems[0]?.deliveryTo ?? null,
+            paymentTerms: extractedItems[0]?.paymentTerms ?? null,
+            ingestionSourceLabel: "calls:simulated",
           }),
         });
         if (!res.ok) throw new Error("Failed to create order");

@@ -2,6 +2,10 @@ import { NextResponse } from "next/server";
 import { getAllOrders, addOrder, deleteOrders } from "@/lib/store";
 import { Order } from "@/lib/types";
 import { generateDefaultLineItems } from "@/lib/default-line-items";
+import {
+  mapParsedLineItemsToOrderLines,
+  parsePurchaseOrderWithFallback,
+} from "@/lib/po-parser";
 
 export async function GET() {
   const orders = await getAllOrders();
@@ -13,30 +17,70 @@ export async function POST(request: Request) {
 
   const orderId = `ord-${Date.now()}`;
   const existingOrders = await getAllOrders();
+  const parsedPo =
+    body.parsedPoData && typeof body.parsedPoData === "object"
+      ? body.parsedPoData
+      : parsePurchaseOrderWithFallback({
+          streamLabel: body.source,
+          subject: body.emailSubject,
+          bodyText: body.emailBody,
+          extraText: body.rawInputText ? [body.rawInputText] : undefined,
+          attachments: body.attachments,
+        });
 
-  const lineItems =
-    body.lineItems && body.lineItems.length > 0
-      ? body.lineItems
+  const lineItems = Array.isArray(body.lineItems) && body.lineItems.length > 0
+    ? body.lineItems
+    : parsedPo.lineItems.length > 0
+      ? mapParsedLineItemsToOrderLines(parsedPo.lineItems, orderId)
       : generateDefaultLineItems(orderId);
+
+  const shouldAutoPush =
+    (parsedPo.overallConfidence ?? 0) >= 85 &&
+    Array.isArray(parsedPo.missingFields) &&
+    parsedPo.missingFields.length <= 1;
+  const routingStatus = shouldAutoPush ? "pushed_to_mrp" : "staged_for_review";
+
+  const fallbackCustomer = {
+    id: `cust-${Date.now()}`,
+    name: body.senderName || "Unknown",
+    email: body.senderEmail || "unknown@example.com",
+    phone: "",
+    company: body.senderName?.split("@")[1] || "Unknown Company",
+    billingAddress: "Not provided",
+    shippingAddress: parsedPo.shipTo || "Not provided",
+  };
+  const customer = body.customer
+    ? {
+        ...body.customer,
+        shippingAddress:
+          body.customer.shippingAddress === "Not provided" && parsedPo.shipTo
+            ? parsedPo.shipTo
+            : body.customer.shippingAddress,
+      }
+    : fallbackCustomer;
 
   const order: Order = {
     id: orderId,
     orderNumber: `ORD-2026-${String(existingOrders.length + 43).padStart(4, "0")}`,
     status: "pending",
+    source: body.source || "email",
     createdAt: new Date().toISOString(),
     emailSubject: body.emailSubject || "New Order",
-    customer: body.customer || {
-      id: `cust-${Date.now()}`,
-      name: body.senderName || "Unknown",
-      email: body.senderEmail || "unknown@example.com",
-      phone: "",
-      company: body.senderName?.split("@")[1] || "Unknown Company",
-      billingAddress: "Not provided",
-      shippingAddress: "Not provided",
-    },
+    customer,
     attachments: body.attachments || [],
     lineItems,
     totalItems: lineItems.length,
+    poNumber: body.poNumber ?? parsedPo.poNumber ?? null,
+    dueDate: body.dueDate ?? parsedPo.dueDate ?? null,
+    shipTo: body.shipTo ?? parsedPo.shipTo ?? customer.shippingAddress ?? null,
+    shipVia: body.shipVia ?? parsedPo.shipVia ?? null,
+    paymentTerms: body.paymentTerms ?? parsedPo.paymentTerms ?? null,
+    parseConfidence: body.parseConfidence ?? parsedPo.overallConfidence ?? 0,
+    parseFieldConfidence: body.parseFieldConfidence ?? parsedPo.fieldConfidence ?? {},
+    parseMissingFields: body.parseMissingFields ?? parsedPo.missingFields ?? [],
+    mrpRoutingStatus: body.mrpRoutingStatus ?? routingStatus,
+    mrpRoutedAt: shouldAutoPush ? new Date().toISOString() : null,
+    ingestionSourceLabel: body.ingestionSourceLabel ?? body.source ?? "email",
   };
 
   const created = await addOrder(order);

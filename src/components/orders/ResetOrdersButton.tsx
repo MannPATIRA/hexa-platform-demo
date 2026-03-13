@@ -31,7 +31,7 @@ export function ResetOrdersButton() {
         size="sm"
         className="h-9 gap-1.5 border-border text-muted-foreground hover:text-foreground"
         onClick={() => setConfirmOpen(true)}
-        title="Remove demo orders added from email, storefront, etc. Keeps the 5 basic orders."
+        title="Remove session-created orders and restore the baseline demo set."
       >
         <RotateCcw className="h-3.5 w-3.5" />
         Reset to basic
@@ -45,7 +45,7 @@ export function ResetOrdersButton() {
             </h3>
             <p className="mt-2 text-[13px] text-muted-foreground">
               This will remove all orders added from email, storefront, and
-              other sources. Only the 5 original demo orders will remain.
+              other sources. Only the baseline seeded demo orders will remain.
             </p>
             <div className="mt-5 flex justify-end gap-2">
               <Button

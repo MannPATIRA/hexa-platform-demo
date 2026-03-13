@@ -1,20 +1,19 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Send, Save, Eye, FileText, Check, Mail, Paperclip } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { Eye, FileText, Paperclip } from "lucide-react";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
-import { cn } from "@/lib/utils";
 import type { ProcurementItem } from "@/lib/procurement-types";
 import {
-  getSupplier, getSupplierHistoriesForItem, getDaysOfStockRemaining,
+  getSupplier, getSupplierHistoriesForItem, getDaysOfStockRemaining, getRecommendedProcurementAction, getProcurementRoutingReason,
 } from "@/data/procurement-data";
 
 interface DraftRFQSectionProps {
   item: ProcurementItem;
   selectedSupplierIds: string[];
+  rfqRef: string;
 }
 
 function formatDate(date: Date): string {
@@ -26,7 +25,7 @@ function formatDisplayDate(dateStr: string): string {
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
-export default function DraftRFQSection({ item, selectedSupplierIds }: DraftRFQSectionProps) {
+export default function DraftRFQSection({ item, selectedSupplierIds, rfqRef }: DraftRFQSectionProps) {
   const suppliers = useMemo(
     () => selectedSupplierIds.map((id) => getSupplier(id)).filter(Boolean) as NonNullable<ReturnType<typeof getSupplier>>[],
     [selectedSupplierIds]
@@ -50,26 +49,15 @@ export default function DraftRFQSection({ item, selectedSupplierIds }: DraftRFQS
     return Math.max(item.maxStock - item.currentStock, item.reorderPoint);
   }, [item]);
 
-  const [rfqRef] = useState(() => `RFQ-${item.id.replace("pi-", "").toUpperCase()}-${Date.now().toString(36).slice(-4).toUpperCase()}`);
   const [quantity] = useState(defaultQuantity);
   const [deliveryDate] = useState(defaultDeliveryDate);
-  const [rfqStatus, setRfqStatus] = useState<"editing" | "drafted" | "sent">("editing");
-  const [sentAt, setSentAt] = useState<string | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
-  const [sending, setSending] = useState(false);
-
-  const handleSendRFQ = () => {
-    setSending(true);
-    setTimeout(() => {
-      setSending(false);
-      setSentAt(new Date().toISOString());
-      setRfqStatus("sent");
-    }, 1500);
-  };
 
   const supplierName = suppliers.length > 0 ? suppliers[0].name : "—";
   const supplierEmail = suppliers.length > 0 ? suppliers[0].contactEmail : "—";
   const unitPrice = histories.find((h) => selectedSupplierIds.includes(h.supplierId))?.lastUnitPrice ?? histories[0]?.lastUnitPrice ?? 0;
+  const recommendedAction = useMemo(() => getRecommendedProcurementAction(item), [item]);
+  const routingReason = useMemo(() => getProcurementRoutingReason(item), [item]);
   const fmt = (n: number) => n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   if (selectedSupplierIds.length === 0) {
@@ -85,35 +73,31 @@ export default function DraftRFQSection({ item, selectedSupplierIds }: DraftRFQS
 
   return (
     <div className="border border-border bg-card shadow-sm">
-      {/* Success/status header */}
-      {rfqStatus === "sent" ? (
-        <div className="flex items-center gap-3 border-b border-emerald-500/20 bg-emerald-500/5 px-6 py-4">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center bg-emerald-500/10">
-            <Check className="h-4.5 w-4.5 text-emerald-600" />
-          </div>
-          <div>
-            <h3 className="text-[14px] font-semibold text-emerald-800">RFQ Sent</h3>
-            <p className="text-[12px] text-emerald-700/70">
-              Sent to {supplierName} {sentAt && `at ${new Date(sentAt).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}`}
-            </p>
-          </div>
-        </div>
-      ) : (
-        <div className="flex items-center gap-3 border-b border-border px-6 py-4">
+      <div className="flex items-center justify-between border-b border-border px-6 py-4">
+        <div className="flex items-center gap-3">
           <FileText className="h-4 w-4 text-muted-foreground" />
           <div>
             <h3 className="text-[14px] font-semibold text-foreground">Draft RFQ</h3>
             <p className="text-[12px] text-muted-foreground">{rfqRef}</p>
           </div>
-          {rfqStatus === "drafted" && (
-            <Badge variant="outline" className="ml-auto border-amber-500/30 bg-amber-500/10 text-[11px] font-semibold text-amber-700">
-              Draft Saved
-            </Badge>
-          )}
         </div>
-      )}
+        <button
+          onClick={() => setPreviewOpen(true)}
+          className="inline-flex items-center gap-1.5 border border-border px-3 py-1.5 text-[12px] text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground"
+        >
+          <Eye className="h-3 w-3" />
+          Full Preview
+        </button>
+      </div>
 
       <div className="space-y-6 p-6">
+        {recommendedAction === "rfq" && routingReason && (
+          <div className="border border-violet-500/25 bg-violet-500/5 px-3.5 py-2.5">
+            <p className="text-[11px] font-medium uppercase tracking-wider text-violet-700">Auto Routing Context</p>
+            <p className="mt-1 text-[12px] text-violet-700/90">{routingReason}</p>
+          </div>
+        )}
+
         {/* Email preview — matches QuotePanel pattern */}
         <div>
           <h4 className="mb-3 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
@@ -220,49 +204,6 @@ export default function DraftRFQSection({ item, selectedSupplierIds }: DraftRFQS
           </div>
         </div>
 
-        {/* Action buttons — matches QuotePanel pattern */}
-        <div className="flex items-center gap-3 pt-1">
-          {rfqStatus !== "sent" ? (
-            <>
-              <button
-                onClick={handleSendRFQ}
-                disabled={sending}
-                className="inline-flex items-center gap-2 bg-foreground px-5 py-2.5 text-[13px] font-medium text-background transition-opacity hover:opacity-90 disabled:opacity-60"
-              >
-                {sending ? (
-                  <>
-                    <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-background/30 border-t-background" />
-                    Sending&hellip;
-                  </>
-                ) : (
-                  <>
-                    <Send className="h-3.5 w-3.5" />
-                    Send RFQ
-                  </>
-                )}
-              </button>
-              <button
-                onClick={() => setRfqStatus("drafted")}
-                className="inline-flex items-center gap-2 border border-border px-4 py-2.5 text-[13px] font-medium text-foreground/70 transition-colors hover:bg-accent/60 hover:text-foreground"
-              >
-                <Save className="h-3.5 w-3.5" />
-                Save Draft
-              </button>
-            </>
-          ) : (
-            <div className="inline-flex items-center gap-2 bg-emerald-600 px-5 py-2.5 text-[13px] font-medium text-white">
-              <Check className="h-3.5 w-3.5" />
-              RFQ Sent
-            </div>
-          )}
-          <button
-            onClick={() => setPreviewOpen(true)}
-            className="inline-flex items-center gap-2 border border-border px-4 py-2.5 text-[13px] font-medium text-foreground/70 transition-colors hover:bg-accent/60 hover:text-foreground"
-          >
-            <Eye className="h-3.5 w-3.5" />
-            Preview
-          </button>
-        </div>
       </div>
 
       <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>

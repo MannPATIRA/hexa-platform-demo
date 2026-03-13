@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import {
   ShoppingCart,
   Trash2,
@@ -34,13 +33,14 @@ import StorefrontHeader from "@/components/storefront/StorefrontHeader";
 import {
   loadCart,
   clearCart,
+  clearStorefrontIntakeContext,
+  loadStorefrontIntakeContext,
   saveCart,
   cartItemsToLineItems,
   type CartItem,
 } from "@/lib/cart-utils";
 
 export default function CartPage() {
-  const router = useRouter();
   const [items, setItems] = useState<CartItem[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [placing, setPlacing] = useState(false);
@@ -84,8 +84,10 @@ export default function CartPage() {
     setPlacing(true);
 
     const lineItems = cartItemsToLineItems(items);
+    const storefrontIntake = loadStorefrontIntakeContext();
 
     const body = {
+      source: "ecommerce",
       emailSubject: "Storefront Order — Apex Industrial Supply",
       senderName: "Apex Storefront",
       senderEmail: "orders@apexindustrial.com",
@@ -100,6 +102,11 @@ export default function CartPage() {
       },
       lineItems,
       attachments: [],
+      parsedPoData: storefrontIntake?.parsedPoData ?? undefined,
+      rawInputText: storefrontIntake?.rawInputText ?? undefined,
+      ingestionSourceLabel: storefrontIntake
+        ? `storefront:${storefrontIntake.stream}`
+        : "storefront:ecommerce",
     };
 
     try {
@@ -113,6 +120,7 @@ export default function CartPage() {
 
       const order = await res.json();
       clearCart();
+      clearStorefrontIntakeContext();
       window.location.href = `/orders/${order.id}`;
     } catch {
       setPlacing(false);

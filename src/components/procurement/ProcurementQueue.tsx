@@ -1,9 +1,8 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo } from "react";
 import { Search, Package, Wrench, Settings, Plus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -11,9 +10,10 @@ import {
   procurementItems,
   getDaysOfStockRemaining,
   getStockColor,
-  getSupplier,
+  getRecommendedProcurementAction,
+  isAutoErpMrpItem,
 } from "@/data/procurement-data";
-import type { ProcurementItem, ProcurementStatus } from "@/lib/procurement-types";
+import type { ProcurementItem, ProcurementStatus, ProcurementPriority } from "@/lib/procurement-types";
 import ItemDetailPanel from "./ItemDetailPanel";
 import ERPScanConfig from "./ERPScanConfig";
 import EngineeringRequestForm from "./EngineeringRequestForm";
@@ -35,6 +35,25 @@ const statusBadgeClass: Record<ProcurementStatus, string> = {
   po_raised: "border-emerald-500/30 bg-emerald-500/10 text-emerald-600",
 };
 
+const priorityLabels: Record<ProcurementPriority, string> = {
+  critical: "Critical",
+  high: "High",
+  medium: "Medium",
+  low: "Low",
+};
+
+const priorityBadgeClass: Record<ProcurementPriority, string> = {
+  critical: "border-red-500/30 bg-red-500/10 text-red-700",
+  high: "border-amber-500/30 bg-amber-500/10 text-amber-700",
+  medium: "border-border bg-muted/50 text-foreground/70",
+  low: "border-border bg-muted/50 text-muted-foreground",
+};
+
+const actionBadgeClass = {
+  po: "border-blue-500/30 bg-blue-500/10 text-blue-700",
+  rfq: "border-violet-500/30 bg-violet-500/10 text-violet-700",
+};
+
 export default function ProcurementQueue() {
   const [search, setSearch] = useState("");
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
@@ -43,7 +62,7 @@ export default function ProcurementQueue() {
 
   // TODO: Replace with real API call
   const [items] = useState<ProcurementItem[]>(() => {
-    const ids = ["pi-001", "pi-004", "pi-007", "pi-008", "pi-003"];
+    const ids = ["pi-001", "pi-013", "pi-004", "pi-007", "pi-008", "pi-003"];
     return ids.map((id) => procurementItems.find((i) => i.id === id)!).filter(Boolean);
   });
 
@@ -54,7 +73,7 @@ export default function ProcurementQueue() {
       (i) =>
         i.name.toLowerCase().includes(q) ||
         i.sku.toLowerCase().includes(q) ||
-        (getSupplier(i.preferredSupplierId)?.name.toLowerCase().includes(q) ?? false)
+        i.requestedBy.toLowerCase().includes(q)
     );
   }, [items, search]);
 
@@ -116,25 +135,25 @@ export default function ProcurementQueue() {
         </div>
       </div>
 
-      {/* Column headers — matches Orders/Calls */}
-      <div className="flex items-center border-b border-border px-7 py-2">
+      {/* Column headers */}
+      <div className="flex items-center border-b border-border px-8 py-2">
         <div className="flex-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
           Item
         </div>
-        <div className="w-36 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+        <div className="w-40 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
           Source
         </div>
-        <div className="w-44 text-right text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-          Supplier
+        <div className="w-28 text-center text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+          Priority
         </div>
-        <div className="w-24 text-right text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+        <div className="w-28 text-center text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
           Days Left
         </div>
-        <div className="w-28 text-right text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+        <div className="w-32 text-center text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
           Status
         </div>
-        <div className="w-28 text-right text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-          Flagged
+        <div className="w-32 text-right text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+          Date Flagged
         </div>
       </div>
 
@@ -151,8 +170,9 @@ export default function ProcurementQueue() {
             filtered.map((item) => {
               const days = getDaysOfStockRemaining(item);
               const daysColor = getStockColor(days);
-              const supplier = getSupplier(item.preferredSupplierId);
               const isEngineering = item.source === "engineering_request";
+              const isAuto = isAutoErpMrpItem(item);
+              const recommendation = getRecommendedProcurementAction(item);
               const Icon = isEngineering ? Wrench : Package;
 
               return (
@@ -178,21 +198,46 @@ export default function ProcurementQueue() {
                       </div>
                     </div>
 
-                    <div className="w-36">
+                    <div className="w-40">
                       <p className="text-[12px] text-muted-foreground">
                         {item.source === "erp_alert"
-                          ? "Automated"
+                          ? "ERP Flag"
                           : `Suggested by ${item.requestedBy}`}
                       </p>
+                      {isAuto && recommendation && (
+                        <div className="mt-1 flex flex-wrap items-center gap-1">
+                          <Badge
+                            variant="outline"
+                            className="border-border bg-muted/30 px-1.5 py-0 text-[10px] uppercase tracking-wide text-foreground/70"
+                          >
+                            Auto ERP/MRP
+                          </Badge>
+                          <Badge
+                            variant="outline"
+                            className={cn(
+                              "px-1.5 py-0 text-[10px] uppercase tracking-wide",
+                              actionBadgeClass[recommendation]
+                            )}
+                          >
+                            {recommendation === "po" ? "Auto PO" : "Auto RFQ"}
+                          </Badge>
+                        </div>
+                      )}
                     </div>
 
-                    <div className="w-44 text-right">
-                      <p className="text-[12px] text-muted-foreground">
-                        {supplier?.name ?? "—"}
-                      </p>
+                    <div className="w-28 flex justify-center">
+                      <Badge
+                        variant="outline"
+                        className={cn(
+                          "px-2.5 py-0.5 text-[11px] font-semibold",
+                          priorityBadgeClass[item.priority]
+                        )}
+                      >
+                        {priorityLabels[item.priority]}
+                      </Badge>
                     </div>
 
-                    <div className="w-24 text-right">
+                    <div className="w-28 text-center">
                       {item.avgDailyConsumption > 0 ? (
                         <span
                           className={cn(
@@ -211,7 +256,7 @@ export default function ProcurementQueue() {
                       )}
                     </div>
 
-                    <div className="w-28 flex justify-end">
+                    <div className="w-32 flex justify-center">
                       <Badge
                         variant="outline"
                         className={cn(
@@ -223,7 +268,7 @@ export default function ProcurementQueue() {
                       </Badge>
                     </div>
 
-                    <div className="w-28 text-right">
+                    <div className="w-32 text-right">
                       <p className="text-[12px] text-muted-foreground">
                         {new Date(item.flaggedAt).toLocaleDateString("en-US", {
                           month: "short",

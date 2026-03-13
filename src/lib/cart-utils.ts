@@ -1,6 +1,7 @@
 import { skuCatalog } from "./sku-catalog";
 import type { SkuCatalogEntry } from "./sku-catalog";
 import type { LineItem } from "./types";
+import type { ParsedPoResult } from "./po-parser";
 
 export interface CartItem {
   catalogSku: string;
@@ -13,6 +14,7 @@ export interface CartItem {
 }
 
 const CART_KEY = "apex-cart";
+const STOREFRONT_INTAKE_KEY = "apex-storefront-intake";
 
 export function saveCart(items: CartItem[]) {
   if (typeof window !== "undefined") {
@@ -33,6 +35,35 @@ export function loadCart(): CartItem[] {
 export function clearCart() {
   if (typeof window !== "undefined") {
     localStorage.removeItem(CART_KEY);
+  }
+}
+
+export interface StorefrontIntakeContext {
+  stream: "recent" | "upload" | "dictate" | "type";
+  fileName?: string;
+  rawInputText: string;
+  parsedPoData: ParsedPoResult | null;
+}
+
+export function saveStorefrontIntakeContext(context: StorefrontIntakeContext) {
+  if (typeof window !== "undefined") {
+    localStorage.setItem(STOREFRONT_INTAKE_KEY, JSON.stringify(context));
+  }
+}
+
+export function loadStorefrontIntakeContext(): StorefrontIntakeContext | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(STOREFRONT_INTAKE_KEY);
+    return raw ? (JSON.parse(raw) as StorefrontIntakeContext) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function clearStorefrontIntakeContext() {
+  if (typeof window !== "undefined") {
+    localStorage.removeItem(STOREFRONT_INTAKE_KEY);
   }
 }
 

@@ -4,6 +4,8 @@ import { useState, useCallback, useMemo } from "react";
 import { CatalogItem, Order } from "@/lib/types";
 import { LineItemsPanel } from "./LineItemsPanel";
 import { QuotePanel, ResolvedItem } from "./QuotePanel";
+import { PoQuoteComparisonPanel } from "./orders/PoQuoteComparisonPanel";
+import ShipmentPanel from "./shipping/ShipmentPanel";
 
 export function OrderWorkspace({ order }: { order: Order }) {
   const [resolutions, setResolutions] = useState<Record<string, CatalogItem>>(
@@ -32,6 +34,10 @@ export function OrderWorkspace({ order }: { order: Order }) {
   const totalCount = order.lineItems.length;
 
   const allResolved = resolvedCount === totalCount;
+  const showQuotePanelForFlow =
+    order.demoFlow == null ||
+    order.demoFlow.scenario === "rfq_csv" ||
+    order.demoFlow.scenario === "rfq_handwritten";
 
   const resolvedItems: ResolvedItem[] = useMemo(
     () =>
@@ -47,12 +53,40 @@ export function OrderWorkspace({ order }: { order: Order }) {
 
   return (
     <div className="space-y-5">
-      <div className="border border-border bg-card p-6 shadow-sm">
-        <LineItemsPanel
-          items={order.lineItems}
-          resolutions={resolutions}
-          onResolve={handleResolve}
-        />
+      <PoQuoteComparisonPanel order={order} />
+
+      <div className="border border-border bg-muted/20 px-5 py-3.5">
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-1 text-[12px] text-muted-foreground">
+          <span>
+            Parse Confidence:{" "}
+            <span className="font-medium text-foreground/85">
+              {order.parseConfidence ?? 0}%
+            </span>
+          </span>
+          <span>
+            Due Date:{" "}
+            <span className="font-medium text-foreground/85">
+              {order.dueDate || "Not parsed"}
+            </span>
+          </span>
+          <span>
+            Ship Via:{" "}
+            <span className="font-medium text-foreground/85">
+              {order.shipVia || "Not parsed"}
+            </span>
+          </span>
+          <span>
+            Payment Terms:{" "}
+            <span className="font-medium text-foreground/85">
+              {order.paymentTerms || "Not parsed"}
+            </span>
+          </span>
+        </div>
+        {order.parseMissingFields && order.parseMissingFields.length > 0 && (
+          <p className="mt-1.5 text-[12px] text-amber-700">
+            Missing fields: {order.parseMissingFields.join(", ")}
+          </p>
+        )}
       </div>
 
       {!allResolved && (
@@ -69,9 +103,19 @@ export function OrderWorkspace({ order }: { order: Order }) {
         </div>
       )}
 
-      {allResolved && (
+      <div className="border border-border bg-card p-6 shadow-sm">
+        <LineItemsPanel
+          items={order.lineItems}
+          resolutions={resolutions}
+          onResolve={handleResolve}
+        />
+      </div>
+
+      {allResolved && showQuotePanelForFlow && (
         <QuotePanel order={order} resolvedItems={resolvedItems} />
       )}
+
+      <ShipmentPanel order={order} />
     </div>
   );
 }

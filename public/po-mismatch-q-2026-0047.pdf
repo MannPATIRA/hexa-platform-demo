@@ -1,0 +1,15 @@
+% Demo attachment content (placeholder PDF text file)
+% Filename intentionally .pdf for PO mismatch scenario
+%
+% Purchase Order: PO-2026-0342
+% Quote Ref: Q-2026-0047
+% Mismatch Summary:
+% - Price mismatch on VB-316-90 (PO 44.90 vs Quote 42.50)
+% - Quantity mismatch on IMP-4-220 (PO 90 vs Quote 60)
+% - Due date mismatch on SK-HT-55 (PO 2026-03-22 vs Quote 2026-03-30)
+% - Drawing revision mismatch on VB-316-90 (PO Rev D vs Quote Rev C)
+%
+% Lines:
+% 1) VB-316-90 qty 120 unit 44.90 due 2026-03-28 rev D
+% 2) IMP-4-220 qty 90 unit 78.00 due 2026-03-29 rev B
+% 3) SK-HT-55 qty 180 unit 12.40 due 2026-03-22 rev A

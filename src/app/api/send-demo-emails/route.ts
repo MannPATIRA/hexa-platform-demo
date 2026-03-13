@@ -45,106 +45,136 @@ export async function POST() {
   const errors: string[] = [];
 
   try {
-    // Email 1: Formal Purchase Order (HTML)
-    const htmlPath = path.join(publicDir, "sample-purchase-order.html");
-    if (fs.existsSync(htmlPath)) {
+    // Email 1: RFQ (CSV)
+    const rfqCsvPath = path.join(publicDir, "rfq-request-march.csv");
+    if (fs.existsSync(rfqCsvPath)) {
       await transporter.sendMail({
-        from: `"James Whitfield - Acme Distributors" <${user}>`,
+        from: `"Elena Marsh - Northfield Components" <${user}>`,
         to,
-        subject: "PO-2026-0341 — March Restock Order",
+        subject: "RFQ-2026-1187 — Need quote for March machining lot (CSV)",
+        text: [
+          "Hi Hexa team,",
+          "",
+          "Please quote the attached items for our March machining lot.",
+          "Please include lead time and confirm drawing revision support.",
+          "",
+          "Target response date: 16 Mar 2026.",
+          "",
+          "Thanks,",
+          "Elena Marsh",
+          "Buyer, Northfield Components",
+          "(555) 220-1178",
+        ].join("\n"),
+        attachments: [
+          {
+            filename: "RFQ-2026-1187-Northfield.csv",
+            path: rfqCsvPath,
+            contentType: "text/csv",
+          },
+        ],
+      });
+      sent.push("RFQ (CSV)");
+    } else {
+      errors.push("rfq-request-march.csv not found");
+    }
+
+    // Email 2: RFQ (handwritten note, PDF)
+    const rfqHandwrittenPath = path.join(publicDir, "rfq-handwritten-note.pdf");
+    if (fs.existsSync(rfqHandwrittenPath)) {
+      await transporter.sendMail({
+        from: `"Ravi Patel - Summit Fabrication" <${user}>`,
+        to,
+        subject: "Quick RFQ — handwritten shop-floor request",
         text: [
           "Hi,",
           "",
-          "Please find attached our purchase order PO-2026-0341 for the March restock.",
-          "A few items still need price confirmation — I've noted those on the PO.",
+          "Attaching a handwritten request from our production lead.",
+          "Please quote what you can and flag anything unclear.",
           "",
-          "Happy to jump on a call to clarify anything.",
+          "This one is urgent for line setup next week.",
           "",
-          "Best regards,",
+          "Thanks,",
+          "Ravi Patel",
+          "Summit Fabrication",
+          "(555) 778-4010",
+        ].join("\n"),
+        attachments: [
+          {
+            filename: "RFQ-handwritten-note.pdf",
+            path: rfqHandwrittenPath,
+            contentType: "application/pdf",
+          },
+        ],
+      });
+      sent.push("RFQ (Handwritten PDF)");
+    } else {
+      errors.push("rfq-handwritten-note.pdf not found");
+    }
+
+    // Email 3: Purchase Order that matches prior quote
+    const poMatchPath = path.join(publicDir, "po-match-q-2026-0047.pdf");
+    if (fs.existsSync(poMatchPath)) {
+      await transporter.sendMail({
+        from: `"James Whitfield - Acme Distributors" <${user}>`,
+        to,
+        subject: "PO-2026-0341 — Confirmed against Quote Q-2026-0047",
+        text: [
+          "Hi,",
+          "",
+          "Attached PO aligns with your quote Q-2026-0047.",
+          "Please process and push to ERP once validated.",
+          "",
+          "Please confirm expected ship date in your acknowledgment.",
+          "",
+          "Thanks,",
           "James Whitfield",
-          "Purchasing Manager",
           "Acme Distributors Inc.",
           "(555) 234-8901",
         ].join("\n"),
         attachments: [
           {
-            filename: "PO-2026-0341-AcmeDistributors.html",
-            path: htmlPath,
-            contentType: "text/html",
+            filename: "PO-2026-0341-match.pdf",
+            path: poMatchPath,
+            contentType: "application/pdf",
           },
         ],
       });
-      sent.push("Purchase Order (HTML)");
+      sent.push("PO (Matched to Quote)");
     } else {
-      errors.push("sample-purchase-order.html not found");
+      errors.push("po-match-q-2026-0047.pdf not found");
     }
 
-    // Email 2: CSV Order Spreadsheet
-    const csvPath = path.join(publicDir, "sample-order.csv");
-    if (fs.existsSync(csvPath)) {
+    // Email 4: Purchase Order with quote mismatch
+    const poMismatchPath = path.join(publicDir, "po-mismatch-q-2026-0047.pdf");
+    if (fs.existsSync(poMismatchPath)) {
       await transporter.sendMail({
-        from: `"Sarah Chen - Meridian Parts" <${user}>`,
+        from: `"James Whitfield - Acme Distributors" <${user}>`,
         to,
-        subject: "February Replenishment — Order Spreadsheet",
+        subject: "PO-2026-0342 — Updated quantities (please expedite)",
         text: [
           "Hi team,",
           "",
-          "Attached is our February replenishment order as a CSV export",
-          "from our inventory system. Should be straightforward — all SKUs",
-          "are ones we've ordered before.",
+          "Sharing an updated PO revision for immediate release.",
+          "We changed quantity and due dates on a few lines.",
           "",
-          "Please confirm availability and expected ship dates.",
+          "Please process quickly if acceptable.",
           "",
-          "Thanks,",
-          "Sarah Chen",
-          "Procurement Lead",
-          "Meridian Parts Co.",
-          "(555) 876-5432",
+          "Best,",
+          "James Whitfield",
+          "Acme Distributors Inc.",
+          "(555) 234-8901",
         ].join("\n"),
         attachments: [
           {
-            filename: "meridian-parts-feb-order.csv",
-            path: csvPath,
-            contentType: "text/csv",
+            filename: "PO-2026-0342-mismatch.pdf",
+            path: poMismatchPath,
+            contentType: "application/pdf",
           },
         ],
       });
-      sent.push("CSV Spreadsheet");
+      sent.push("PO (Mismatch vs Quote)");
     } else {
-      errors.push("sample-order.csv not found");
-    }
-
-    // Email 3: Handwritten Note Photo (PNG)
-    const notePath = path.join(publicDir, "handwritten-order-note.png");
-    if (fs.existsSync(notePath)) {
-      await transporter.sendMail({
-        from: `"Marcus Rivera - Topline Hardware" <${user}>`,
-        to,
-        subject: "Quick order note from our warehouse",
-        text: [
-          "Hi,",
-          "",
-          "Here's a photo of the handwritten note from our warehouse team.",
-          "A few of the SKUs are hard to read so we might need to confirm those.",
-          "",
-          "Can you check availability on the valve assemblies and pump impellers?",
-          "",
-          "Thanks,",
-          "Marcus Rivera",
-          "Topline Hardware LLC",
-          "(555) 321-0987",
-        ].join("\n"),
-        attachments: [
-          {
-            filename: "warehouse-order-note.png",
-            path: notePath,
-            contentType: "image/png",
-          },
-        ],
-      });
-      sent.push("Handwritten Note");
-    } else {
-      errors.push("handwritten-order-note.png not found");
+      errors.push("po-mismatch-q-2026-0047.pdf not found");
     }
 
     if (sent.length === 0) {
