@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Attachment } from "@/lib/types";
 import {
   FileText,
@@ -37,6 +37,32 @@ function KindIcon({ mimeType, fileName }: { mimeType: string; fileName: string }
     default:
       return <FileText className="h-4 w-4 text-muted-foreground" />;
   }
+}
+
+function PdfBlobViewer({ content, mimeType, height }: { content: string; mimeType: string; height: string }) {
+  const [url, setUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    try {
+      const bytes = Uint8Array.from(atob(content), (c) => c.charCodeAt(0));
+      const blob = new Blob([bytes], { type: mimeType });
+      const blobUrl = URL.createObjectURL(blob);
+      setUrl(blobUrl);
+      return () => URL.revokeObjectURL(blobUrl);
+    } catch {
+      setUrl(null);
+    }
+  }, [content, mimeType]);
+
+  if (!url) {
+    return (
+      <div className="flex h-[200px] items-center justify-center text-muted-foreground">
+        <p className="text-[13px]">Unable to load PDF preview.</p>
+      </div>
+    );
+  }
+
+  return <iframe src={url} title="PDF preview" className={`w-full ${height}`} />;
 }
 
 function InlinePreview({ att }: { att: Attachment }) {
@@ -86,12 +112,9 @@ function InlinePreview({ att }: { att: Attachment }) {
   }
 
   if (kind === "pdf") {
-    const src = `data:${att.mimeType};base64,${att.content}`;
     return (
       <div className="overflow-hidden border border-border bg-muted/20">
-        <object data={src} type="application/pdf" className="h-[400px] w-full">
-          <PlaceholderPreview att={att} kind={kind} />
-        </object>
+        <PdfBlobViewer content={att.content} mimeType={att.mimeType} height="h-[400px]" />
       </div>
     );
   }

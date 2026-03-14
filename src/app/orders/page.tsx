@@ -44,6 +44,11 @@ const STAGE_CONFIG: Record<
     className:
       "border-violet-500/30 bg-violet-500/10 text-violet-700",
   },
+  quote_prepared: {
+    label: "Quote Prepared",
+    className:
+      "border-violet-500/30 bg-violet-500/10 text-violet-700",
+  },
   po_received: {
     label: "PO Received",
     className:
@@ -56,6 +61,11 @@ const STAGE_CONFIG: Record<
   },
   pushed_to_mrp: {
     label: "Pushed to MRP",
+    className:
+      "border-emerald-500/30 bg-emerald-500/10 text-emerald-700",
+  },
+  po_validated: {
+    label: "PO Validated",
     className:
       "border-emerald-500/30 bg-emerald-500/10 text-emerald-700",
   },
@@ -139,7 +149,7 @@ export default async function OrdersPage() {
       <ScrollArea className="flex-1">
         <div className="space-y-1.5 px-4 py-3">
           {orders.map((order) => {
-            const personPart = order.customer.name.split(/\s+[-–]\s+/)[0];
+            const personPart = (order.customer?.name ?? "").split(/\s+[-–]\s+/)[0];
             const letters = personPart
               .split(/\s+/)
               .filter((w) => /^[A-Za-z]/.test(w))
@@ -168,7 +178,7 @@ export default async function OrdersPage() {
                         {order.orderNumber}
                       </p>
                       <p className="mt-0.5 text-[11px] text-muted-foreground">
-                        {order.customer.name} &middot; {order.customer.company}
+                        {order.customer?.name ?? "Unknown"} &middot; {order.customer?.company ?? "Unknown"}
                       </p>
                     </div>
                   </div>
@@ -226,7 +236,7 @@ const SOURCE_CONFIG: Record<
 };
 
 function SourceBadge({ source }: { source?: OrderSource }) {
-  const config = SOURCE_CONFIG[source ?? "email"];
+  const config = SOURCE_CONFIG[source ?? "email"] ?? SOURCE_CONFIG["email"];
   const Icon = config.icon;
   return (
     <span className="inline-flex items-center gap-1.5 text-[12px] text-muted-foreground">
@@ -237,7 +247,10 @@ function SourceBadge({ source }: { source?: OrderSource }) {
 }
 
 function StageBadge({ stage }: { stage: OrderStage }) {
-  const config = STAGE_CONFIG[stage];
+  const config = STAGE_CONFIG[stage] ?? {
+    label: stage ?? "Unknown",
+    className: "border-border bg-muted/40 text-muted-foreground",
+  };
   return (
     <Badge
       variant="outline"

@@ -154,6 +154,10 @@ export async function deleteOrders(ids: string[]): Promise<void> {
 
 export async function resetToBasicOrders(): Promise<void> {
   const r = getRedis();
-  if (r) return kvReset(r);
+  if (r) {
+    await kvReset(r);
+    await kvSeed(r);
+    return;
+  }
   mem.splice(0, mem.length, ...mockOrders);
 }

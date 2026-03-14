@@ -30,13 +30,13 @@ export default async function OrderDetailPage({
         Back to Orders
       </Link>
 
-      <CollapsibleCustomerCard customer={order.customer} />
+      {order.customer && <CollapsibleCustomerCard customer={order.customer} />}
 
       <OrderDetailClient
         order={order}
         leftPanel={
           <div className="border border-border bg-card p-6 shadow-sm">
-            <AttachmentViewer attachments={order.attachments} />
+            <AttachmentViewer attachments={order.attachments ?? []} />
           </div>
         }
       />

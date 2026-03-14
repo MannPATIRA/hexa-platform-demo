@@ -34,7 +34,7 @@ export async function POST(request: Request) {
       ? mapParsedLineItemsToOrderLines(parsedPo.lineItems, orderId)
       : generateDefaultLineItems(orderId);
 
-  const defaultStage = "pushed_to_mrp";
+  const defaultStage = "rfq_received";
 
   const fallbackCustomer = {
     id: `cust-${Date.now()}`,
