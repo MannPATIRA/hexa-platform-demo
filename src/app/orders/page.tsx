@@ -181,7 +181,7 @@ export default async function OrdersPage() {
                         {order.orderNumber}
                       </p>
                       <p className="mt-0.5 text-[11px] text-muted-foreground">
-                        {order.customer.name} &middot; {order.customer.company}
+                        {order.customer?.name ?? "Unknown"} &middot; {order.customer?.company ?? "Unknown"}
                       </p>
                     </div>
                   </div>

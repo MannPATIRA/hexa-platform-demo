@@ -91,7 +91,7 @@ export function OrderDetailClient({ order: initialOrder, leftPanel }: Props) {
     label: order.stage ?? "Unknown",
     className: "border-border bg-muted/40 text-muted-foreground",
   };
-  const itemsNeedingAction = order.lineItems.filter(
+  const itemsNeedingAction = (order.lineItems ?? []).filter(
     (i) => i.matchStatus !== "confirmed"
   ).length;
 
@@ -105,7 +105,7 @@ export function OrderDetailClient({ order: initialOrder, leftPanel }: Props) {
         <div>
           <div className="flex items-center gap-3">
             <h1 className="font-display text-[18px] font-medium leading-none text-foreground">
-              {order.customer.company}
+              {order.customer?.company ?? "Unknown Company"}
             </h1>
             <Badge variant="outline" className={config.className}>
               {config.label}
