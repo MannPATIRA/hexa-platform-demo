@@ -3,7 +3,7 @@
 import { Badge } from "@/components/ui/badge";
 import { OrderWorkspace } from "@/components/OrderWorkspace";
 import type { DemoContext } from "@/components/OrderWorkspace";
-import { useDemoFlow } from "@/hooks/useDemoFlow";
+import { useOrderDemoFlow } from "@/hooks/useOrderDemoFlow";
 import type { Order, OrderStage } from "@/lib/types";
 import {
   AlertTriangle,
@@ -74,7 +74,7 @@ interface Props {
 }
 
 export function OrderDetailClient({ order: initialOrder, leftPanel }: Props) {
-  const demo = useDemoFlow(initialOrder);
+  const demo = useOrderDemoFlow(initialOrder);
   const order = demo.order;
 
   const demoBadge = demo.isDemoActive ? DEMO_BADGE_MAP[demo.currentStepId] : undefined;
