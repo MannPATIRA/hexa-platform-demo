@@ -76,7 +76,7 @@ export async function POST(request: Request) {
     parseConfidence: body.parseConfidence ?? parsedPo.overallConfidence ?? 0,
     parseFieldConfidence: body.parseFieldConfidence ?? parsedPo.fieldConfidence ?? {},
     parseMissingFields: body.parseMissingFields ?? parsedPo.missingFields ?? [],
-    mrpRoutedAt: new Date().toISOString(),
+    mrpRoutedAt: (body.stage === "pushed_to_mrp" || body.stage === "shipped" || body.stage === "delivered" || body.stage === "complete") ? new Date().toISOString() : null,
     ingestionSourceLabel: body.ingestionSourceLabel ?? body.source ?? "email",
   };
 
