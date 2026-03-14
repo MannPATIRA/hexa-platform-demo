@@ -34,8 +34,16 @@ const DETAIL_STAGE_CONFIG: Record<OrderStage, { label: string; className: string
     label: "Quote Sent",
     className: "border-violet-500/30 bg-violet-500/10 text-violet-700",
   },
+  quote_prepared: {
+    label: "Quote Prepared",
+    className: "border-violet-500/30 bg-violet-500/10 text-violet-700",
+  },
   po_received: {
     label: "PO Received",
+    className: "border-emerald-500/30 bg-emerald-500/10 text-emerald-700",
+  },
+  po_validated: {
+    label: "PO Validated",
     className: "border-emerald-500/30 bg-emerald-500/10 text-emerald-700",
   },
   po_mismatch: {
@@ -57,6 +65,7 @@ const DETAIL_STAGE_CONFIG: Record<OrderStage, { label: string; className: string
 };
 
 const DEMO_BADGE_MAP: Record<string, { label: string; className: string }> = {
+  clarification_sent:   { label: "RFQ Received",         className: "border-blue-500/30 bg-blue-500/10 text-blue-700" },
   clarification_reply:  { label: "Awaiting Clarification", className: "border-amber-500/30 bg-amber-500/10 text-amber-700" },
   quote_sent:           { label: "Quote Draft",            className: "border-violet-500/30 bg-violet-500/10 text-violet-700" },
   po_received_mismatch: { label: "Quote Sent",             className: "border-violet-500/30 bg-violet-500/10 text-violet-700" },
@@ -78,7 +87,10 @@ export function OrderDetailClient({ order: initialOrder, leftPanel }: Props) {
   const order = demo.order;
 
   const demoBadge = demo.isDemoActive ? DEMO_BADGE_MAP[demo.currentStepId] : undefined;
-  const config = demoBadge ?? DETAIL_STAGE_CONFIG[order.stage];
+  const config = demoBadge ?? DETAIL_STAGE_CONFIG[order.stage] ?? {
+    label: order.stage ?? "Unknown",
+    className: "border-border bg-muted/40 text-muted-foreground",
+  };
   const itemsNeedingAction = order.lineItems.filter(
     (i) => i.matchStatus !== "confirmed"
   ).length;

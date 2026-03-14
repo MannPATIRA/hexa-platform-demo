@@ -44,6 +44,11 @@ const STAGE_CONFIG: Record<
     className:
       "border-violet-500/30 bg-violet-500/10 text-violet-700",
   },
+  quote_prepared: {
+    label: "Quote Prepared",
+    className:
+      "border-violet-500/30 bg-violet-500/10 text-violet-700",
+  },
   po_received: {
     label: "PO Received",
     className:
@@ -56,6 +61,11 @@ const STAGE_CONFIG: Record<
   },
   pushed_to_mrp: {
     label: "Pushed to MRP",
+    className:
+      "border-emerald-500/30 bg-emerald-500/10 text-emerald-700",
+  },
+  po_validated: {
+    label: "PO Validated",
     className:
       "border-emerald-500/30 bg-emerald-500/10 text-emerald-700",
   },
