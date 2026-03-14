@@ -84,9 +84,6 @@ export default async function OrdersPage() {
           <h1 className="font-display text-2xl font-medium leading-none text-foreground">
             Orders
           </h1>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            Manage incoming distributor orders and parsed line items
-          </p>
         </div>
         <div className="flex items-center gap-3">
           <ResetOrdersButton />
