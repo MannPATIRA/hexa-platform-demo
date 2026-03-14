@@ -1,4 +1,4 @@
-import type { Order } from "./types";
+import type { Order, ComparisonField } from "./types";
 
 export interface DemoStep {
   id: string;
@@ -11,36 +11,70 @@ function now(): string {
   return new Date().toISOString();
 }
 
+function generateClarificationQuestions(order: Order): string[] {
+  const questions: string[] = [];
+  for (const item of order.lineItems) {
+    if (item.matchStatus !== "confirmed") {
+      for (const issue of item.issues) {
+        questions.push(
+          `Line ${item.lineNumber} (${item.parsedProductName}): ${issue}`
+        );
+      }
+    }
+  }
+  if (order.parseMissingFields && order.parseMissingFields.length > 0) {
+    questions.push(
+      `Missing order fields: ${order.parseMissingFields.join(", ")}`
+    );
+  }
+  return questions;
+}
+
+function deriveQuoteNumber(order: Order): string {
+  return `Q-${order.orderNumber.replace("ORD-", "")}`;
+}
+
+function derivePoNumber(order: Order): string {
+  return `PO-${order.orderNumber.replace("ORD-", "")}`;
+}
+
+function deriveErpId(order: Order): string {
+  return `ERP-${order.orderNumber.replace("ORD-", "")}`;
+}
+
 export const DEMO_STEPS: DemoStep[] = [
-  // Step 0: rfq_received — initial state, no mutation needed.
-  // User reviews line items, sees clarification questions, clicks "Send Clarification".
+  // Step 0: User reviews line items, sees clarification questions, clicks "Send Clarification".
   {
     id: "clarification_sent",
     type: "user",
-    apply: (order) => ({
-      ...order,
-      stage: "clarification_requested",
-      demoFlow: {
-        ...order.demoFlow!,
-        stage: "rfq_received",
-        clarifications: [
-          {
-            questions: [
-              "Line 2 (Stainless Dowel Pin): No SKU provided — is this the 6mm (DP-SS-6) or 8mm (DP-SS-8) diameter?",
-              "Line 3 (Titanium Shaft Collar): Source mentions both TC-25 and TC-30 — which bore size do you need?",
-              "Line 4 (Custom Spacer): No matching catalog item — can you provide material, dimensions, and quantity confirmation?",
-              "Missing order fields: price, dueDate — can you confirm pricing expectations and a firm due date?",
-            ],
-            emailSent: {
-              to: order.customer.email,
-              subject: `${order.orderNumber} — Clarification needed for 4 items`,
-              body: `Hi ${order.customer.name.split(" ")[0]},\n\nThank you for your RFQ for CNC machining parts. We need a few clarifications before we can prepare your quote:\n\n1. Stainless Dowel Pin — is this the 6mm (DP-SS-6) or 8mm (DP-SS-8)?\n2. Titanium Shaft Collar — TC-25 (25mm) or TC-30 (30mm)?\n3. Custom Spacer — please provide material, dimensions, and drawings.\n4. Please confirm pricing expectations and a firm due date for the lot.\n\nBest regards,\nHexa Sales Team`,
-              sentAt: now(),
+    apply: (order) => {
+      const questions = generateClarificationQuestions(order);
+      const customerName = order.customer.name.split(" ")[0];
+
+      const body = questions.length > 0
+        ? `Hi ${customerName},\n\nThank you for your RFQ (${order.orderNumber}). We need a few clarifications before we can prepare your quote:\n\n${questions.map((q, i) => `${i + 1}. ${q}`).join("\n")}\n\nBest regards,\nHexa Sales Team`
+        : `Hi ${customerName},\n\nThank you for your RFQ (${order.orderNumber}). We're reviewing it now.\n\nBest regards,\nHexa Sales Team`;
+
+      return {
+        ...order,
+        stage: "clarification_requested",
+        demoFlow: {
+          ...order.demoFlow!,
+          stage: "rfq_received",
+          clarifications: [
+            {
+              questions,
+              emailSent: {
+                to: order.customer.email,
+                subject: `${order.orderNumber} — Clarification needed for ${questions.length} items`,
+                body,
+                sentAt: now(),
+              },
             },
-          },
-        ],
-      },
-    }),
+          ],
+        },
+      };
+    },
   },
 
   // Step 1: clarification reply arrives + auto-generates draft quote (auto 5s)
@@ -50,90 +84,92 @@ export const DEMO_STEPS: DemoStep[] = [
     delayMs: 5000,
     apply: (order) => {
       const clarifications = [...(order.demoFlow!.clarifications ?? [])];
+      const unresolvedItems = order.lineItems.filter(
+        (i) => i.matchStatus !== "confirmed"
+      );
+
+      const parsedAnswers = unresolvedItems.map((item) => {
+        if (item.matchedCatalogItems.length > 0) {
+          const match = item.matchedCatalogItems[0];
+          return `${item.parsedProductName} confirmed as ${match.catalogName} (${match.catalogSku})`;
+        }
+        return `${item.parsedProductName}: specs confirmed, ready for custom quoting`;
+      });
+      if (order.parseMissingFields && order.parseMissingFields.length > 0) {
+        parsedAnswers.push("Due date and pricing expectations confirmed");
+      }
+
       if (clarifications.length > 0) {
+        const customerName = order.customer.name.split(" ")[0];
         clarifications[0] = {
           ...clarifications[0],
           replyReceived: {
-            body: "Hi,\n\n1. Dowel pins should be the 6mm (DP-SS-6).\n2. We need the TC-25 (25mm bore) shaft collars.\n3. Custom spacers are 6061-T6 aluminum, 25mm OD x 15mm ID x 10mm thick. I'll send a drawing shortly.\n4. Target due date is April 20, 2026. Budget is flexible but hoping to stay under $5,000 for the lot.\n\nThanks,\nTom",
+            body: `Hi,\n\nHere are the clarifications you requested:\n\n${parsedAnswers.map((a, i) => `${i + 1}. ${a}`).join("\n")}\n\nThanks,\n${customerName}`,
             receivedAt: now(),
-            parsedAnswers: [
-              "Dowel Pin confirmed as DP-SS-6 (6mm diameter)",
-              "Shaft Collar confirmed as TC-25 (25mm bore)",
-              "Custom Spacer: 6061-T6 aluminum, 25mm OD x 15mm ID x 10mm thick",
-              "Due date: April 20, 2026 — budget target under $5,000",
-            ],
+            parsedAnswers,
           },
         };
       }
 
       const lineItems = order.lineItems.map((item) => {
-        if (item.id === "li-demo-052") {
+        if (item.matchStatus === "confirmed") return item;
+        const match = item.matchedCatalogItems[0];
+        if (match) {
           return {
             ...item,
-            parsedSku: "DP-SS-6",
-            parsedProductName: "Stainless Dowel Pin 6mm",
-            parsedUnitPrice: 1.2,
+            parsedSku: match.catalogSku,
+            parsedProductName: match.catalogName,
+            parsedUnitPrice: match.catalogPrice,
             matchStatus: "confirmed" as const,
-            confidence: 96,
-            matchedCatalogItems: [item.matchedCatalogItems[0]],
+            confidence: 92,
+            matchedCatalogItems: [match],
             issues: [],
           };
         }
-        if (item.id === "li-demo-053") {
-          return {
-            ...item,
-            parsedSku: "TC-25",
-            parsedProductName: "Titanium Shaft Collar 25mm",
-            parsedUnitPrice: 18.5,
-            matchStatus: "confirmed" as const,
-            confidence: 95,
-            matchedCatalogItems: [item.matchedCatalogItems[0]],
-            issues: [],
-          };
-        }
-        if (item.id === "li-demo-054") {
-          return {
-            ...item,
-            parsedProductName: "Custom Spacer — 6061-T6 Aluminum",
-            parsedUnitPrice: 3.5,
-            matchStatus: "confirmed" as const,
-            confidence: 88,
-            matchedCatalogItems: [
-              {
-                catalogSku: "CUSTOM-SPC-001",
-                catalogName: "Custom Spacer 6061-T6",
-                catalogDescription: "6061-T6 aluminum spacer, 25mm OD x 15mm ID x 10mm thick.",
-                catalogPrice: 3.5,
-                catalogUom: "unit",
-              },
-            ],
-            issues: [],
-          };
-        }
-        return item;
+        const fallbackPrice = item.parsedUnitPrice ?? 25.0;
+        return {
+          ...item,
+          parsedUnitPrice: fallbackPrice,
+          matchStatus: "confirmed" as const,
+          confidence: 85,
+          matchedCatalogItems: [
+            {
+              catalogSku: `CUSTOM-${item.lineNumber}`,
+              catalogName: item.parsedProductName,
+              catalogDescription: `Custom item — ${item.parsedProductName}`,
+              catalogPrice: fallbackPrice,
+              catalogUom: item.parsedUom || "unit",
+            },
+          ],
+          issues: [],
+        };
       });
 
+      const quoteNumber = deriveQuoteNumber(order);
       const quoteItems = lineItems.map((li) => ({
         sku: li.parsedSku ?? "CUSTOM",
         name: li.parsedProductName,
         qty: li.parsedQuantity,
         unitPrice: li.parsedUnitPrice ?? 0,
       }));
-      const subtotal = quoteItems.reduce((s, i) => s + i.qty * i.unitPrice, 0);
+      const subtotal = quoteItems.reduce(
+        (s, i) => s + i.qty * i.unitPrice,
+        0
+      );
 
       return {
         ...order,
         stage: "quote_sent",
-        dueDate: "2026-04-20",
+        dueDate: order.dueDate || "2026-04-20",
         lineItems,
         parseMissingFields: [],
         demoFlow: {
           ...order.demoFlow!,
           stage: "quote_prepared",
-          quoteNumber: "Q-2026-0055",
+          quoteNumber,
           clarifications,
           quoteSummary: {
-            quoteNumber: "Q-2026-0055",
+            quoteNumber,
             items: quoteItems,
             subtotal,
             sentAt: "",
@@ -165,59 +201,96 @@ export const DEMO_STEPS: DemoStep[] = [
     id: "po_received_mismatch",
     type: "auto",
     delayMs: 2000,
-    apply: (order) => ({
-      ...order,
-      stage: "po_mismatch",
-      poNumber: "PO-2026-0388",
-      paymentTerms: "Net 30",
-      shipVia: "FedEx Economy",
-      demoFlow: {
-        ...order.demoFlow!,
-        stage: "po_received",
-        poNumber: "PO-2026-0388",
-        poConfirmation: {
-          poNumber: "PO-2026-0388",
-          receivedAt: now(),
-          matchesQuote: false,
+    apply: (order) => {
+      const quoteNumber =
+        order.demoFlow!.quoteNumber ?? deriveQuoteNumber(order);
+      const poNumber = derivePoNumber(order);
+      const items = order.lineItems;
+      const checks: Array<{
+        field: ComparisonField;
+        matches: boolean;
+        quoteValue: string;
+        incomingValue: string;
+        note?: string;
+      }> = [];
+
+      if (items.length >= 1) {
+        const item = items[0];
+        const label = item.parsedSku ?? item.parsedProductName;
+        const newQty = item.parsedQuantity + 50;
+        checks.push({
+          field: "quantity",
+          matches: false,
+          quoteValue: `${label} = ${item.parsedQuantity}`,
+          incomingValue: `${label} = ${newQty}`,
+          note: `Quantity increased from ${item.parsedQuantity} to ${newQty}`,
+        });
+      }
+      if (items.length >= 2) {
+        const item = items[1];
+        const label = item.parsedSku ?? item.parsedProductName;
+        const quotedPrice = item.parsedUnitPrice ?? 10;
+        const poPrice = +(quotedPrice * 0.89).toFixed(2);
+        checks.push({
+          field: "price",
+          matches: false,
+          quoteValue: `${label} = $${quotedPrice.toFixed(2)}`,
+          incomingValue: `${label} = $${poPrice.toFixed(2)}`,
+          note: "Customer expects lower unit price",
+        });
+      }
+      checks.push(
+        {
+          field: "dueDate",
+          matches: true,
+          quoteValue: order.dueDate || "2026-04-20",
+          incomingValue: order.dueDate || "2026-04-20",
         },
-        quoteComparison: {
-          overallMatch: false,
-          checks: [
-            {
-              field: "quantity",
-              matches: false,
-              quoteValue: "AL-BRK-100 = 200",
-              incomingValue: "AL-BRK-100 = 250",
-              note: "Quantity increased from 200 to 250",
-            },
-            {
-              field: "price",
-              matches: false,
-              quoteValue: "PB-440 = $6.50",
-              incomingValue: "PB-440 = $5.80",
-              note: "Customer expects lower unit price",
-            },
-            {
-              field: "dueDate",
-              matches: true,
-              quoteValue: "2026-04-20",
-              incomingValue: "2026-04-20",
-            },
-            {
-              field: "drawingRev",
-              matches: true,
-              quoteValue: "All revisions matched",
-              incomingValue: "All revisions matched",
-            },
-          ],
+        {
+          field: "drawingRev",
+          matches: true,
+          quoteValue: "All revisions matched",
+          incomingValue: "All revisions matched",
+        }
+      );
+
+      const mismatchLines = checks
+        .filter((c) => !c.matches)
+        .map(
+          (c) =>
+            `- ${c.field === "quantity" ? "Quantity" : "Price"}: ${c.incomingValue} on PO vs ${c.quoteValue} quoted`
+        )
+        .join("\n");
+
+      const customerName = order.customer.name.split(" ")[0];
+
+      return {
+        ...order,
+        stage: "po_mismatch",
+        poNumber,
+        paymentTerms: order.paymentTerms || "Net 30",
+        shipVia: order.shipVia || "FedEx Economy",
+        demoFlow: {
+          ...order.demoFlow!,
+          stage: "po_received",
+          poNumber,
+          poConfirmation: {
+            poNumber,
+            receivedAt: now(),
+            matchesQuote: false,
+          },
+          quoteComparison: {
+            overallMatch: false,
+            checks,
+          },
+          correctionDraftEmail: {
+            to: order.customer.email,
+            subject: `${poNumber} needs correction to match Quote ${quoteNumber}`,
+            body: `Hi ${customerName},\n\nThanks for sending ${poNumber}. We detected differences against Quote ${quoteNumber}:\n\n${mismatchLines}\n\nPlease send a corrected PO or confirm you'd like us to requote these lines.\n\nBest,\nHexa Sales Ops`,
+          },
         },
-        correctionDraftEmail: {
-          to: order.customer.email,
-          subject: "PO-2026-0388 needs correction to match Quote Q-2026-0055",
-          body: `Hi Tom,\n\nThanks for sending PO-2026-0388. We detected differences against Quote Q-2026-0055:\n\n- Quantity: AL-BRK-100 is 250 on PO vs 200 quoted\n- Price: PB-440 is $5.80 on PO vs $6.50 quoted\n\nPlease send a corrected PO or confirm you'd like us to requote these lines.\n\nBest,\nHexa Sales Ops`,
-        },
-      },
-    }),
+      };
+    },
   },
 
   // Step 4: User sends correction email
@@ -232,29 +305,53 @@ export const DEMO_STEPS: DemoStep[] = [
     id: "po_received_match",
     type: "auto",
     delayMs: 2000,
-    apply: (order) => ({
-      ...order,
-      stage: "po_received",
-      demoFlow: {
-        ...order.demoFlow!,
-        stage: "po_validated",
-        poConfirmation: {
-          poNumber: "PO-2026-0388-R1",
-          receivedAt: now(),
-          matchesQuote: true,
+    apply: (order) => {
+      const revisedPoNumber =
+        (order.demoFlow?.poNumber ?? order.poNumber ?? "PO") + "-R1";
+      return {
+        ...order,
+        stage: "po_received",
+        demoFlow: {
+          ...order.demoFlow!,
+          stage: "po_validated",
+          poConfirmation: {
+            poNumber: revisedPoNumber,
+            receivedAt: now(),
+            matchesQuote: true,
+          },
+          quoteComparison: {
+            overallMatch: true,
+            checks: [
+              {
+                field: "price" as ComparisonField,
+                matches: true,
+                quoteValue: "All lines matched quoted prices",
+                incomingValue: "All lines matched quoted prices",
+              },
+              {
+                field: "quantity" as ComparisonField,
+                matches: true,
+                quoteValue: "All line quantities unchanged",
+                incomingValue: "All line quantities unchanged",
+              },
+              {
+                field: "dueDate" as ComparisonField,
+                matches: true,
+                quoteValue: "Due dates aligned with quote",
+                incomingValue: "Due dates aligned with quote",
+              },
+              {
+                field: "drawingRev" as ComparisonField,
+                matches: true,
+                quoteValue: "All lines at approved revisions",
+                incomingValue: "All lines at approved revisions",
+              },
+            ],
+          },
+          correctionDraftEmail: undefined,
         },
-        quoteComparison: {
-          overallMatch: true,
-          checks: [
-            { field: "price", matches: true, quoteValue: "All lines matched quoted prices", incomingValue: "All lines matched quoted prices" },
-            { field: "quantity", matches: true, quoteValue: "All line quantities unchanged", incomingValue: "All line quantities unchanged" },
-            { field: "dueDate", matches: true, quoteValue: "Due dates aligned with quote", incomingValue: "Due dates aligned with quote" },
-            { field: "drawingRev", matches: true, quoteValue: "All lines at approved revisions", incomingValue: "All lines at approved revisions" },
-          ],
-        },
-        correctionDraftEmail: undefined,
-      },
-    }),
+      };
+    },
   },
 
   // Step 6: User approves and pushes to MRP
@@ -263,6 +360,7 @@ export const DEMO_STEPS: DemoStep[] = [
     type: "user",
     apply: (order) => {
       const pushedAt = now();
+      const erpOrderId = deriveErpId(order);
       return {
         ...order,
         stage: "pushed_to_mrp",
@@ -271,14 +369,26 @@ export const DEMO_STEPS: DemoStep[] = [
           ...order.demoFlow!,
           mrpPush: {
             pushedAt,
-            erpOrderId: "ERP-2026-0388",
+            erpOrderId,
           },
           erpSync: {
             state: "acknowledged" as const,
             timeline: [
-              { label: "PO parsed and validated", state: "queued" as const, at: new Date(Date.now() - 4000).toISOString() },
-              { label: "Order sent to ERP system", state: "sent" as const, at: new Date(Date.now() - 2000).toISOString() },
-              { label: "ERP order acknowledged", state: "acknowledged" as const, at: pushedAt },
+              {
+                label: "PO parsed and validated",
+                state: "queued" as const,
+                at: new Date(Date.now() - 4000).toISOString(),
+              },
+              {
+                label: "Order sent to ERP system",
+                state: "sent" as const,
+                at: new Date(Date.now() - 2000).toISOString(),
+              },
+              {
+                label: "ERP order acknowledged",
+                state: "acknowledged" as const,
+                at: pushedAt,
+              },
             ],
           },
         },
@@ -295,7 +405,7 @@ export const DEMO_STEPS: DemoStep[] = [
       ...order,
       stage: "shipped",
       shipmentSummary: {
-        shipmentId: "shp-demo-005",
+        shipmentId: `shp-${order.id.slice(-8)}`,
         status: "shipment_created",
         carrier: "fedex",
         trackingNumber: "794644790188",
@@ -366,16 +476,16 @@ export const DEMO_STEPS: DemoStep[] = [
       ...order,
       stage: "delivered",
       shipmentSummary: order.shipmentSummary
-        ? { ...order.shipmentSummary, status: "delivered", latestEventAt: now() }
+        ? {
+            ...order.shipmentSummary,
+            status: "delivered",
+            latestEventAt: now(),
+          }
         : undefined,
     }),
   },
 ];
 
 export function isDemoEligible(order: Order): boolean {
-  return (
-    order.stage === "rfq_received" &&
-    order.demoFlow?.scenario === "rfq_csv" &&
-    order.id === "ord-demo-005"
-  );
+  return order.stage === "rfq_received" && !!order.demoFlow?.scenario;
 }

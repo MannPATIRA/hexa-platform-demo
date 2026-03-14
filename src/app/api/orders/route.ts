@@ -78,6 +78,10 @@ export async function POST(request: Request) {
     parseMissingFields: body.parseMissingFields ?? parsedPo.missingFields ?? [],
     mrpRoutedAt: (body.stage === "pushed_to_mrp" || body.stage === "shipped" || body.stage === "delivered" || body.stage === "complete") ? new Date().toISOString() : null,
     ingestionSourceLabel: body.ingestionSourceLabel ?? body.source ?? "email",
+    demoFlow: {
+      scenario: "dynamic" as const,
+      stage: "rfq_received" as const,
+    },
   };
 
   const created = await addOrder(order);

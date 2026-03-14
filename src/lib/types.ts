@@ -63,7 +63,8 @@ export type DemoOrderScenario =
   | "rfq_csv"
   | "rfq_handwritten"
   | "po_match"
-  | "po_mismatch";
+  | "po_mismatch"
+  | "dynamic";
 export type ComparisonField = "price" | "quantity" | "dueDate" | "drawingRev";
 export type ErpSyncState = "queued" | "sent" | "acknowledged" | "blocked";
 
