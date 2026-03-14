@@ -21,10 +21,10 @@ export const mockOrders: Order[] = [
     attachments: [
       {
         id: "att-demo-005",
-        fileName: "RFQ-Pacific-Q2-2026.csv",
-        mimeType: "text/csv",
-        size: 28_400,
-        url: "/rfq-pacific-q2-2026.csv",
+        fileName: "RFQ-Pacific-Q2-2026.pdf",
+        mimeType: "application/pdf",
+        size: 3_560,
+        url: "/rfq-pacific-q2-2026.pdf",
       },
     ],
     lineItems: [
@@ -161,7 +161,7 @@ export const mockOrders: Order[] = [
     totalItems: 5,
     parseConfidence: 88,
     parseMissingFields: ["price", "dueDate"],
-    ingestionSourceLabel: "Outlook - RFQ CSV",
+    ingestionSourceLabel: "Outlook - RFQ PDF",
     demoFlow: {
       scenario: "rfq_csv",
       stage: "rfq_received",
@@ -188,10 +188,10 @@ export const mockOrders: Order[] = [
     attachments: [
       {
         id: "att-demo-004",
-        fileName: "RFQ-Acme-Hydraulic-2026.html",
-        mimeType: "text/html",
-        size: 42_600,
-        url: "/rfq-acme-hydraulic-2026.html",
+        fileName: "RFQ-Acme-Hydraulic-2026.pdf",
+        mimeType: "application/pdf",
+        size: 3_204,
+        url: "/rfq-acme-hydraulic-2026.pdf",
       },
     ],
     lineItems: [
@@ -277,14 +277,14 @@ export const mockOrders: Order[] = [
     totalItems: 3,
     parseConfidence: 91,
     parseMissingFields: [],
-    ingestionSourceLabel: "Outlook - RFQ CSV",
+    ingestionSourceLabel: "Outlook - RFQ PDF",
     demoFlow: {
       scenario: "rfq_csv",
       stage: "rfq_received",
       clarifications: [
         {
           questions: [
-            "CSV lists 'Seal Kit High Temp' without specifying the operating temperature range — is this the SK-HT-55 (up to 400°F) or SK-HT-80 (up to 800°F)?",
+            "RFQ lists 'Seal Kit High Temp' without specifying the operating temperature range — is this the SK-HT-55 (up to 400°F) or SK-HT-80 (up to 800°F)?",
             "Requested due date for Pump Impeller 4in is 2026-03-29 — can you confirm this is firm or if there is flexibility?",
           ],
           emailSent: {
@@ -305,7 +305,7 @@ export const mockOrders: Order[] = [
     stage: "clarification_received",
     source: "email",
     createdAt: "2026-03-13T08:40:00Z",
-    emailSubject: "RFQ-2026-1187 — Need quote for March machining lot (CSV)",
+    emailSubject: "RFQ-2026-1187 — Need quote for March machining lot",
     customer: {
       id: "cust-demo-003",
       name: "Elena Marsh",
@@ -318,10 +318,10 @@ export const mockOrders: Order[] = [
     attachments: [
       {
         id: "att-demo-001",
-        fileName: "RFQ-2026-1187-Northfield.csv",
-        mimeType: "text/csv",
-        size: 34_500,
-        url: "/rfq-northfield-march-2026.csv",
+        fileName: "RFQ-2026-1187-Northfield.pdf",
+        mimeType: "application/pdf",
+        size: 3_285,
+        url: "/rfq-northfield-march-2026.pdf",
       },
     ],
     lineItems: [
@@ -397,7 +397,7 @@ export const mockOrders: Order[] = [
     ],
     totalItems: 3,
     parseConfidence: 97,
-    ingestionSourceLabel: "Outlook - RFQ CSV",
+    ingestionSourceLabel: "Outlook - RFQ PDF",
     demoFlow: {
       scenario: "rfq_csv",
       stage: "rfq_received",
@@ -405,7 +405,7 @@ export const mockOrders: Order[] = [
       clarifications: [
         {
           questions: [
-            "CSV lists 'Seal Kit High Temp' without specifying the operating temperature range — is this the SK-HT-55 (up to 400°F) or SK-HT-80 (up to 800°F)?",
+            "RFQ lists 'Seal Kit High Temp' without specifying the operating temperature range — is this the SK-HT-55 (up to 400°F) or SK-HT-80 (up to 800°F)?",
             "Requested due date for Pump Impeller 4in is 2026-03-29 — can you confirm this is firm or if there is flexibility?",
           ],
           emailSent: {
@@ -447,10 +447,10 @@ export const mockOrders: Order[] = [
     attachments: [
       {
         id: "att-demo-002",
-        fileName: "RFQ-Summit-Handwritten-Note.html",
-        mimeType: "text/html",
-        size: 32_400,
-        url: "/rfq-summit-handwritten.html",
+        fileName: "RFQ-Summit-Handwritten-Note.pdf",
+        mimeType: "application/pdf",
+        size: 2_998,
+        url: "/rfq-summit-handwritten.pdf",
       },
     ],
     lineItems: [
@@ -565,10 +565,10 @@ export const mockOrders: Order[] = [
     attachments: [
       {
         id: "att-003",
-        fileName: "PO-2026-0299-Topline.html",
-        mimeType: "text/html",
-        size: 48_200,
-        url: "/po-topline-supply-q1.html",
+        fileName: "PO-2026-0299-Topline.pdf",
+        mimeType: "application/pdf",
+        size: 3_736,
+        url: "/po-topline-supply-q1.pdf",
       },
     ],
     lineItems: [
