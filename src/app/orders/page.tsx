@@ -142,7 +142,7 @@ export default async function OrdersPage() {
       <ScrollArea className="flex-1">
         <div className="space-y-1.5 px-4 py-3">
           {orders.map((order) => {
-            const personPart = order.customer.name.split(/\s+[-–]\s+/)[0];
+            const personPart = (order.customer?.name ?? "").split(/\s+[-–]\s+/)[0];
             const letters = personPart
               .split(/\s+/)
               .filter((w) => /^[A-Za-z]/.test(w))
@@ -229,7 +229,7 @@ const SOURCE_CONFIG: Record<
 };
 
 function SourceBadge({ source }: { source?: OrderSource }) {
-  const config = SOURCE_CONFIG[source ?? "email"];
+  const config = SOURCE_CONFIG[source ?? "email"] ?? SOURCE_CONFIG["email"];
   const Icon = config.icon;
   return (
     <span className="inline-flex items-center gap-1.5 text-[12px] text-muted-foreground">
@@ -240,7 +240,10 @@ function SourceBadge({ source }: { source?: OrderSource }) {
 }
 
 function StageBadge({ stage }: { stage: OrderStage }) {
-  const config = STAGE_CONFIG[stage];
+  const config = STAGE_CONFIG[stage] ?? {
+    label: stage ?? "Unknown",
+    className: "border-border bg-muted/40 text-muted-foreground",
+  };
   return (
     <Badge
       variant="outline"
