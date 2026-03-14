@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { X, Package, Wrench, Calendar, Mail, Clock, Star, FileText, ArrowLeftRight, FileDown, Table2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import type {
   ProcurementItem,
   ProcurementStatus,
+  ProcurementDemoShipment,
 } from "@/lib/procurement-types";
 import {
   getSupplier,
@@ -21,6 +22,7 @@ import {
   getDraftRFQForItem,
   getQuoteById,
 } from "@/data/procurement-data";
+import { useProcurementDemoFlow } from "@/hooks/useProcurementDemoFlow";
 import UrgencyBanner from "./UrgencyBanner";
 import InventorySection from "./InventorySection";
 import StockTrendChart from "./StockTrendChart";
@@ -51,7 +53,7 @@ const stageDisplayNames: Record<ProcurementStatus, string> = {
   flagged: "Original Flag",
   rfq_sent: "RFQ Sent to Suppliers",
   quotes_received: "Quotes Received",
-  po_sent: "PO Sent & Confirmed",
+  po_sent: "Shipment Tracking",
   shipped: "Shipment Tracking",
   delivered: "Delivery Confirmed",
 };
@@ -65,17 +67,50 @@ const statusBadgeClass: Record<ProcurementStatus, string> = {
   delivered: "border-emerald-500/30 bg-emerald-500/10 text-emerald-700",
 };
 
+const SHIPMENT_BADGE: Record<string, { label: string; className: string }> = {
+  draft:            { label: "PO Sent",          className: "border-indigo-500/30 bg-indigo-500/10 text-indigo-700" },
+  shipment_created: { label: "Shipment Created", className: "border-blue-500/30 bg-blue-500/10 text-blue-700" },
+  label_created:    { label: "Label Created",    className: "border-indigo-500/30 bg-indigo-500/10 text-indigo-700" },
+  picked_up:        { label: "Picked Up",        className: "border-cyan-500/30 bg-cyan-500/10 text-cyan-700" },
+  in_transit:       { label: "In Transit",       className: "border-amber-500/30 bg-amber-500/10 text-amber-700" },
+  out_for_delivery: { label: "Out for Delivery", className: "border-orange-500/30 bg-orange-500/10 text-orange-700" },
+  delivered:        { label: "Delivered",         className: "border-emerald-500/30 bg-emerald-500/10 text-emerald-700" },
+};
+
+function getEffectiveBadge(
+  itemStatus: ProcurementStatus,
+  shipment?: ProcurementDemoShipment,
+): { label: string; className: string } {
+  if (
+    (itemStatus === "po_sent" || itemStatus === "shipped") &&
+    shipment
+  ) {
+    return (
+      SHIPMENT_BADGE[shipment.status] ?? {
+        label: statusLabels[itemStatus],
+        className: statusBadgeClass[itemStatus],
+      }
+    );
+  }
+  return {
+    label: statusLabels[itemStatus],
+    className: statusBadgeClass[itemStatus],
+  };
+}
+
 interface ItemDetailPanelProps {
   item: ProcurementItem;
   onClose: () => void;
+  onItemUpdate?: (item: ProcurementItem) => void;
 }
 
-function getItemStages(item: ProcurementItem): ProcurementStatus[] {
-  const hasRfqPath = !!item.activeRfqId;
+function getItemStages(item: ProcurementItem, demoPath: "rfq" | "po" | null): ProcurementStatus[] {
+  const hasRfqPath = demoPath === "rfq" || !!item.activeRfqId;
   const allStages: ProcurementStatus[] = hasRfqPath
-    ? ["flagged", "rfq_sent", "quotes_received", "po_sent", "shipped", "delivered"]
-    : ["flagged", "po_sent", "shipped", "delivered"];
-  const currentIdx = allStages.indexOf(item.status);
+    ? ["flagged", "rfq_sent", "quotes_received", "po_sent", "delivered"]
+    : ["flagged", "po_sent", "delivered"];
+  const effectiveStatus = item.status === "shipped" ? "po_sent" : item.status;
+  const currentIdx = allStages.indexOf(effectiveStatus);
   if (currentIdx === -1) return ["flagged"];
   return allStages.slice(0, currentIdx + 1).reverse();
 }
@@ -84,19 +119,33 @@ function formatShortDate(iso: string): string {
   return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
-export default function ItemDetailPanel({ item, onClose }: ItemDetailPanelProps) {
+export default function ItemDetailPanel({ item: initialItem, onClose, onItemUpdate }: ItemDetailPanelProps) {
+  const {
+    item: demoItem,
+    demoData,
+    isAutoProgressing,
+    isComplete,
+    isDemoActive,
+    currentStepId,
+    path: demoPath,
+    startDemo,
+    advance,
+  } = useProcurementDemoFlow(initialItem, onItemUpdate);
+
+  const item = demoItem;
+
   const [selectedSupplierIds, setSelectedSupplierIds] = useState<string[]>(
-    item.preferredSupplierId ? [item.preferredSupplierId] : []
+    initialItem.preferredSupplierId ? [initialItem.preferredSupplierId] : []
   );
   const [selectedQuoteId, setSelectedQuoteId] = useState<string | null>(
-    item.selectedQuoteId ?? null
+    initialItem.selectedQuoteId ?? null
   );
   const [orderMode, setOrderMode] = useState<"po" | "rfq">(
-    item.preferredSupplierId ? "po" : "rfq"
+    initialItem.preferredSupplierId ? "po" : "rfq"
   );
 
   const [rfqRef] = useState(
-    () => `RFQ-${item.id.replace("pi-", "").toUpperCase()}-${Date.now().toString(36).slice(-4).toUpperCase()}`
+    () => `RFQ-${initialItem.id.replace("pi-", "").toUpperCase()}-${Date.now().toString(36).slice(-4).toUpperCase()}`
   );
 
   useEffect(() => {
@@ -107,105 +156,95 @@ export default function ItemDetailPanel({ item, onClose }: ItemDetailPanelProps)
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [onClose]);
 
-  const isEngineering = item.source === "engineering_request";
+  const isEngineering = initialItem.source === "engineering_request";
   const SourceIcon = isEngineering ? Wrench : Package;
-  const days = getDaysOfStockRemaining(item);
+  const days = getDaysOfStockRemaining(initialItem);
 
   const po = useMemo(() => {
+    if (demoData.po) return demoData.po;
     if (!item.purchaseOrderId) return null;
     return getPurchaseOrder(item.purchaseOrderId) ?? null;
-  }, [item.purchaseOrderId]);
+  }, [item.purchaseOrderId, demoData.po]);
 
   const rfq = useMemo(() => {
+    if (demoData.rfq) return demoData.rfq;
     if (item.activeRfqId) return getDraftRFQ(item.activeRfqId) ?? null;
     return getDraftRFQForItem(item.id) ?? null;
-  }, [item.activeRfqId, item.id]);
+  }, [item.activeRfqId, item.id, demoData.rfq]);
 
   const rfqEntries = useMemo(() => {
+    if (demoData.rfqEntries && demoData.rfqEntries.length > 0) return demoData.rfqEntries;
     if (!item.activeRfqId) return [];
     return getRFQSupplierEntries(item.activeRfqId);
-  }, [item.activeRfqId]);
+  }, [item.activeRfqId, demoData.rfqEntries]);
 
   const quotes = useMemo(() => {
+    if (demoData.quotes && demoData.quotes.length > 0) return demoData.quotes;
     if (!item.activeRfqId) return [];
     return getQuotesForRFQ(item.activeRfqId);
-  }, [item.activeRfqId]);
+  }, [item.activeRfqId, demoData.quotes]);
+
+  const effectiveSelectedQuoteId = demoData.selectedQuoteId ?? item.selectedQuoteId ?? selectedQuoteId;
 
   const selectedQuote = useMemo(() => {
-    const qid = item.selectedQuoteId ?? selectedQuoteId;
-    if (!qid) return null;
-    return getQuoteById(qid) ?? null;
-  }, [item.selectedQuoteId, selectedQuoteId]);
+    if (!effectiveSelectedQuoteId) return null;
+    const fromDemo = demoData.quotes?.find((q) => q.id === effectiveSelectedQuoteId);
+    if (fromDemo) return fromDemo;
+    return getQuoteById(effectiveSelectedQuoteId) ?? null;
+  }, [effectiveSelectedQuoteId, demoData.quotes]);
 
-  const supplierHistories = useMemo(() => getSupplierHistoriesForItem(item.id), [item.id]);
+  const supplierHistories = useMemo(() => getSupplierHistoriesForItem(initialItem.id), [initialItem.id]);
 
-  const stages = useMemo(() => getItemStages(item), [item]);
+  const stages = useMemo(() => getItemStages(item, demoPath), [item, demoPath]);
+
+  const scrollTopRef = useRef<HTMLDivElement>(null);
+  const prevStatusRef = useRef(item.status);
+
+  useEffect(() => {
+    if (item.status !== prevStatusRef.current) {
+      prevStatusRef.current = item.status;
+      requestAnimationFrame(() => {
+        const viewport = scrollTopRef.current?.closest(
+          '[data-slot="scroll-area-viewport"]',
+        );
+        if (viewport) {
+          viewport.scrollTo({ top: 0, behavior: "smooth" });
+        }
+      });
+    }
+  }, [item.status]);
 
   const handleToggleSupplier = (id: string) => {
     setSelectedSupplierIds((prev) => {
       const next = prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id];
       if (next.length > 1) {
         setOrderMode("rfq");
-      } else if (next.length === 1 && next[0] === item.preferredSupplierId) {
+      } else if (next.length === 1 && next[0] === initialItem.preferredSupplierId) {
         setOrderMode("po");
       }
       return next;
     });
   };
 
-  const buildRFQPayload = useCallback(() => {
-    if (selectedSupplierIds.length === 0) return;
-    const supplier = getSupplier(selectedSupplierIds[0]);
-    if (!supplier) return;
-    const preferred = supplierHistories.find((h) => selectedSupplierIds.includes(h.supplierId));
-    const leadTime = preferred?.avgLeadTimeDays ?? supplierHistories[0]?.avgLeadTimeDays ?? 14;
-    const daysRemaining = getDaysOfStockRemaining(item);
-    const deliveryDate = (() => {
-      const d = new Date("2026-03-09");
-      d.setDate(d.getDate() + (daysRemaining === Infinity ? leadTime + 7 : Math.max(daysRemaining, leadTime)));
-      return d.toISOString().split("T")[0];
-    })();
-    const quantity = item.source === "engineering_request"
-      ? item.maxStock || 25
-      : Math.max(item.maxStock - item.currentStock, item.reorderPoint);
-    const unitPrice = preferred?.lastUnitPrice ?? supplierHistories[0]?.lastUnitPrice ?? 0;
-    return {
-      rfqRef,
-      itemName: item.name,
-      itemSku: item.sku,
-      itemDescription: item.description,
-      technicalSpecs: item.technicalSpecs,
-      attachments: item.attachments,
-      supplierName: supplier.name,
-      supplierEmail: supplier.contactEmail,
-      quantity,
-      unitPrice,
-      deliveryDate,
-    };
-  }, [rfqRef, item, selectedSupplierIds, supplierHistories]);
+  const handleSendRFQ = useCallback(() => {
+    startDemo("rfq", selectedSupplierIds);
+  }, [startDemo, selectedSupplierIds]);
 
-  const handleSendRFQ = useCallback(async () => {
-    const payload = buildRFQPayload();
-    if (!payload) return;
-    const res = await fetch("/api/procurement/send-rfq", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error((err as { message?: string }).message || "Failed to send RFQ");
-    }
-  }, [buildRFQPayload]);
+  const handleSendPO = useCallback(() => {
+    startDemo("po", selectedSupplierIds);
+  }, [startDemo, selectedSupplierIds]);
+
+  const handleSendPOFromQuote = useCallback(() => {
+    advance(selectedQuoteId ?? undefined);
+  }, [advance, selectedQuoteId]);
 
   function getStageSummary(stage: ProcurementStatus): string {
     switch (stage) {
       case "delivered":
         return po
-          ? `Received at dock — $${po.totalPrice.toLocaleString()} total, ${Math.round((new Date("2026-03-13").getTime() - new Date(item.flaggedAt).getTime()) / 86400000)}d from flag`
+          ? `Received at dock — $${po.totalPrice.toLocaleString()} total, ${Math.round((new Date().getTime() - new Date(initialItem.flaggedAt).getTime()) / 86400000)}d from flag`
           : "Delivery confirmed";
       case "shipped":
-        return po ? `Shipment in transit — ${po.supplier.name}` : "Shipment tracking";
       case "po_sent":
         return po
           ? `$${po.totalPrice.toLocaleString()} to ${po.supplier.name} on ${formatShortDate(po.sentAt ?? po.createdAt)}`
@@ -221,9 +260,9 @@ export default function ItemDetailPanel({ item, onClose }: ItemDetailPanelProps)
           ? `RFQ sent to ${rfqEntries.length} supplier${rfqEntries.length !== 1 ? "s" : ""} on ${rfq.sentAt ? formatShortDate(rfq.sentAt) : "—"}`
           : "RFQ sent to suppliers";
       case "flagged":
-        return item.source === "erp_alert"
-          ? `ERP Flag — ${item.priority} priority${days !== Infinity ? `, ${days}d of stock` : ""}`
-          : `Engineering request — ${item.priority} priority, by ${item.requestedBy}`;
+        return initialItem.source === "erp_alert"
+          ? `ERP Flag — ${initialItem.priority} priority${days !== Infinity ? `, ${days}d of stock` : ""}`
+          : `Engineering request — ${initialItem.priority} priority, by ${initialItem.requestedBy}`;
       default:
         return "";
     }
@@ -232,9 +271,8 @@ export default function ItemDetailPanel({ item, onClose }: ItemDetailPanelProps)
   function getStageDate(stage: ProcurementStatus): string | undefined {
     switch (stage) {
       case "delivered":
-        return "2026-03-04T14:10:00Z";
+        return demoData.shipment?.latestEventAt ?? "2026-03-04T14:10:00Z";
       case "shipped":
-        return po?.sentAt ?? po?.createdAt;
       case "po_sent":
         return po?.sentAt ?? po?.createdAt;
       case "quotes_received":
@@ -242,7 +280,7 @@ export default function ItemDetailPanel({ item, onClose }: ItemDetailPanelProps)
       case "rfq_sent":
         return rfq?.sentAt ?? undefined;
       case "flagged":
-        return item.flaggedAt;
+        return initialItem.flaggedAt;
       default:
         return undefined;
     }
@@ -253,9 +291,8 @@ export default function ItemDetailPanel({ item, onClose }: ItemDetailPanelProps)
       case "delivered":
         return renderDelivered();
       case "shipped":
-        return renderShipped();
       case "po_sent":
-        return renderPOSent(isActive);
+        return renderShippingStage(isActive);
       case "quotes_received":
         return renderQuotesReceived(isActive);
       case "rfq_sent":
@@ -268,58 +305,48 @@ export default function ItemDetailPanel({ item, onClose }: ItemDetailPanelProps)
   }
 
   function renderDelivered() {
-    if (!po) return <p className="text-[13px] text-muted-foreground">Delivery data not available</p>;
+    const deliveryDate = demoData.shipment?.latestEventAt ?? "2026-03-04T14:10:00Z";
+    const totalCost = po?.totalPrice ?? 0;
     const daysToDeliver = Math.round(
-      (new Date("2026-03-04").getTime() - new Date(item.flaggedAt).getTime()) / 86400000
+      (new Date(deliveryDate).getTime() - new Date(initialItem.flaggedAt).getTime()) / 86400000
     );
+    const supplierName = po?.supplier.name ?? "Supplier";
     return (
       <DeliveryConfirmationBanner
-        deliveredDate="2026-03-04T14:10:00Z"
-        totalCost={po.totalPrice}
+        deliveredDate={deliveryDate}
+        totalCost={totalCost}
         daysToDeliver={daysToDeliver}
-        supplierName={po.supplier.name}
+        supplierName={supplierName}
       />
     );
   }
 
-  function renderShipped() {
-    if (!po) return <p className="text-[13px] text-muted-foreground">PO data not available</p>;
-    return (
+  function renderShippingStage(isActive: boolean) {
+    const trackingPanel = demoData.shipment ? (
+      <ProcurementShipmentPanel
+        poId=""
+        deliveryAddress="1500 Factory Lane, Dock 4, Milwaukee, WI 53201"
+        demoShipment={demoData.shipment}
+      />
+    ) : po ? (
       <ProcurementShipmentPanel
         poId={po.id}
         deliveryAddress={po.deliveryAddress}
       />
-    );
-  }
+    ) : null;
 
-  function renderPOSent(isActive: boolean) {
-    if (!po) return <p className="text-[13px] text-muted-foreground">PO data not available</p>;
+    if (!po && !trackingPanel) {
+      return <p className="text-[13px] text-muted-foreground">PO data not available</p>;
+    }
+
     return (
       <div className="space-y-4">
-        <POPreviewSection po={po} item={item} isReadOnly />
-        {po.quoteId && selectedQuote && (
+        {trackingPanel}
+        {!isActive && po && (
+          <POPreviewSection po={po} item={initialItem} isReadOnly />
+        )}
+        {!isActive && po?.quoteId && selectedQuote && (
           <POQuoteVerification po={po} quote={selectedQuote} />
-        )}
-        {isActive && (
-          <div className="flex items-center gap-3 border border-indigo-500/20 bg-indigo-500/5 px-5 py-4">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-indigo-500/10">
-              <Package className="h-5 w-5 text-indigo-600" />
-            </div>
-            <div>
-              <h4 className="text-[13px] font-semibold text-indigo-900">Awaiting Shipment</h4>
-              <p className="text-[12px] text-indigo-700/70">
-                Expected delivery by {new Date(po.expectedDelivery).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
-              </p>
-            </div>
-          </div>
-        )}
-        {isActive && (
-          <div className="border border-border bg-card px-5 py-4">
-            <h4 className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground mb-2">Supplier Contact</h4>
-            <p className="text-[13px] font-medium text-foreground/85">{po.supplier.name}</p>
-            <p className="mt-0.5 text-[12px] text-muted-foreground">{po.supplier.contactEmail}</p>
-            <p className="text-[12px] text-muted-foreground">{po.supplier.contactPhone}</p>
-          </div>
         )}
       </div>
     );
@@ -339,7 +366,7 @@ export default function ItemDetailPanel({ item, onClose }: ItemDetailPanelProps)
         <QuoteComparisonSection
           quotes={quotes}
           supplierHistories={supplierHistories}
-          selectedQuoteId={item.selectedQuoteId ?? selectedQuoteId}
+          selectedQuoteId={effectiveSelectedQuoteId}
           onSelectQuote={setSelectedQuoteId}
           isReadOnly={!isActive}
         />
@@ -363,7 +390,7 @@ export default function ItemDetailPanel({ item, onClose }: ItemDetailPanelProps)
         )}
         {!isActive && rfq && (
           <DraftRFQSection
-            item={item}
+            item={initialItem}
             selectedSupplierIds={rfq.supplierIds}
             rfqRef={rfq.id.toUpperCase()}
             isReadOnly
@@ -380,21 +407,21 @@ export default function ItemDetailPanel({ item, onClose }: ItemDetailPanelProps)
         ? rfq.supplierIds
         : po
           ? [po.supplierId]
-          : item.preferredSupplierId
-            ? [item.preferredSupplierId]
+          : initialItem.preferredSupplierId
+            ? [initialItem.preferredSupplierId]
             : [];
 
       return (
         <div className="space-y-4">
           {isEngineering ? (
-            <EngineeringRequestDetails itemId={item.id} />
+            <EngineeringRequestDetails itemId={initialItem.id} />
           ) : (
-            <InventorySection item={item} />
+            <InventorySection item={initialItem} />
           )}
 
           {supplierHistories.length > 0 && (
             <SupplierComparisonTable
-              itemId={item.id}
+              itemId={initialItem.id}
               selectedSupplierIds={chosenSupplierIds}
               onToggleSupplier={() => {}}
               isReadOnly
@@ -403,7 +430,7 @@ export default function ItemDetailPanel({ item, onClose }: ItemDetailPanelProps)
 
           {rfq && (
             <DraftRFQSection
-              item={item}
+              item={initialItem}
               selectedSupplierIds={rfq.supplierIds}
               rfqRef={rfq.id.toUpperCase()}
               isReadOnly
@@ -412,40 +439,38 @@ export default function ItemDetailPanel({ item, onClose }: ItemDetailPanelProps)
           )}
 
           {!rfq && po && (
-            <POPreviewSection po={po} item={item} isReadOnly />
+            <POPreviewSection po={po} item={initialItem} isReadOnly />
           )}
         </div>
       );
     }
-
-    const hasPreferredSupplier = !!item.preferredSupplierId && supplierHistories.some(h => h.supplierId === item.preferredSupplierId);
 
     if (isEngineering) {
       return (
         <div className="space-y-5">
-          <EngineeringRequestDetails itemId={item.id} />
+          <EngineeringRequestDetails itemId={initialItem.id} />
           <SupplierComparisonTable
-            itemId={item.id}
+            itemId={initialItem.id}
             selectedSupplierIds={selectedSupplierIds}
             onToggleSupplier={handleToggleSupplier}
           />
           {selectedSupplierIds.length > 0 && (
-            <OrderQuantitySection item={item} selectedSupplierIds={selectedSupplierIds} />
+            <OrderQuantitySection item={initialItem} selectedSupplierIds={selectedSupplierIds} />
           )}
           {selectedSupplierIds.length > 0 && (
-            <DraftRFQSection item={item} selectedSupplierIds={selectedSupplierIds} rfqRef={rfqRef} />
+            <DraftRFQSection item={initialItem} selectedSupplierIds={selectedSupplierIds} rfqRef={rfqRef} />
           )}
         </div>
       );
     }
 
-    const preferredHistory = supplierHistories.find(h => h.supplierId === item.preferredSupplierId);
+    const preferredHistory = supplierHistories.find(h => h.supplierId === initialItem.preferredSupplierId);
     const activeHistory = supplierHistories.find(h => h.supplierId === selectedSupplierIds[0]);
     const showPoMode = orderMode === "po" && selectedSupplierIds.length === 1 && activeHistory;
 
     const leadTime = activeHistory?.avgLeadTimeDays ?? preferredHistory?.avgLeadTimeDays ?? 14;
     const unitPrice = activeHistory?.lastUnitPrice ?? preferredHistory?.lastUnitPrice ?? 0;
-    const orderQty = Math.max(item.maxStock - item.currentStock, item.reorderPoint);
+    const orderQty = Math.max(initialItem.maxStock - initialItem.currentStock, initialItem.reorderPoint);
     const deliveryDate = (() => {
       const d = new Date("2026-03-09");
       d.setDate(d.getDate() + Math.max(days === Infinity ? leadTime + 7 : days, leadTime));
@@ -454,21 +479,21 @@ export default function ItemDetailPanel({ item, onClose }: ItemDetailPanelProps)
 
     return (
       <div className="space-y-5">
-        <InventorySection item={item} />
-        <StockTrendChart item={item} />
+        <InventorySection item={initialItem} />
+        <StockTrendChart item={initialItem} />
 
         <SupplierComparisonTable
-          itemId={item.id}
+          itemId={initialItem.id}
           selectedSupplierIds={selectedSupplierIds}
           onToggleSupplier={handleToggleSupplier}
         />
 
         {selectedSupplierIds.length > 0 && (
-          <CoOrderSection item={item} />
+          <CoOrderSection item={initialItem} />
         )}
 
         {selectedSupplierIds.length > 0 && (
-          <OrderQuantitySection item={item} selectedSupplierIds={selectedSupplierIds} />
+          <OrderQuantitySection item={initialItem} selectedSupplierIds={selectedSupplierIds} />
         )}
 
         {selectedSupplierIds.length > 0 && (
@@ -499,7 +524,7 @@ export default function ItemDetailPanel({ item, onClose }: ItemDetailPanelProps)
 
             {showPoMode && activeHistory ? (
               <DraftPOInline
-                item={item}
+                item={initialItem}
                 supplier={activeHistory.supplier}
                 supplierEmail={activeHistory.supplier.contactEmail}
                 unitPrice={unitPrice}
@@ -508,7 +533,7 @@ export default function ItemDetailPanel({ item, onClose }: ItemDetailPanelProps)
                 deliveryDate={deliveryDate}
               />
             ) : (
-              <DraftRFQSection item={item} selectedSupplierIds={selectedSupplierIds} rfqRef={rfqRef} />
+              <DraftRFQSection item={initialItem} selectedSupplierIds={selectedSupplierIds} rfqRef={rfqRef} />
             )}
           </>
         )}
@@ -540,38 +565,38 @@ export default function ItemDetailPanel({ item, onClose }: ItemDetailPanelProps)
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-3">
                   <h2 className="font-display text-[22px] font-medium leading-none text-foreground">
-                    {item.name}
+                    {initialItem.name}
                   </h2>
                   <Badge
                     variant="outline"
-                    className={cn("text-[11px] font-semibold", statusBadgeClass[item.status])}
+                    className={cn("text-[11px] font-semibold", getEffectiveBadge(item.status, demoData.shipment).className)}
                   >
-                    {statusLabels[item.status]}
+                    {getEffectiveBadge(item.status, demoData.shipment).label}
                   </Badge>
                 </div>
                 <div className="mt-2 flex flex-wrap items-center gap-4 text-[13px] text-muted-foreground">
                   <span className="inline-flex items-center gap-1.5">
                     <SourceIcon className="h-3.5 w-3.5" />
-                    {item.sku}
+                    {initialItem.sku}
                   </span>
                   <span className="inline-flex items-center gap-1.5">
                     <Calendar className="h-3.5 w-3.5" />
-                    {new Date(item.flaggedAt).toLocaleDateString("en-US", {
+                    {new Date(initialItem.flaggedAt).toLocaleDateString("en-US", {
                       weekday: "long",
                       month: "long",
                       day: "numeric",
                       year: "numeric",
                     })}
                   </span>
-                  {isEngineering && item.requestedBy && (
+                  {isEngineering && initialItem.requestedBy && (
                     <span className="inline-flex items-center gap-1.5">
                       <Mail className="h-3.5 w-3.5" />
-                      Requested by {item.requestedBy}
+                      Requested by {initialItem.requestedBy}
                     </span>
                   )}
                 </div>
                 <p className="mt-2 text-[12px] text-muted-foreground/80 leading-relaxed max-w-2xl">
-                  {item.description}
+                  {initialItem.description}
                 </p>
               </div>
 
@@ -587,20 +612,32 @@ export default function ItemDetailPanel({ item, onClose }: ItemDetailPanelProps)
           {/* Urgency Banner (only for flagged state) */}
           {item.status === "flagged" && (
             <div className="flex-none px-7 pt-5">
-              <UrgencyBanner item={item} />
+              <UrgencyBanner item={initialItem} />
             </div>
           )}
 
           {/* Stacked stage content */}
           <ScrollArea className="flex-1 overflow-hidden">
             <div className="px-7 py-5">
-              <div className="max-w-4xl">
+              <div ref={scrollTopRef} className="max-w-4xl">
+                {isDemoActive && item.status !== "flagged" && (
+                  <div className="mb-4 flex items-center gap-2">
+                    <span className="inline-flex items-center border border-blue-500/30 bg-blue-500/10 px-2.5 py-1 text-[11px] font-semibold text-blue-700">
+                      Live Demo
+                    </span>
+                    {isAutoProgressing && (
+                      <span className="text-[11px] text-muted-foreground animate-pulse">
+                        Waiting for response...
+                      </span>
+                    )}
+                  </div>
+                )}
                 {stages.map((stage, idx) => {
                   const isActive = idx === 0;
                   const isLast = idx === stages.length - 1;
                   return (
                     <StageSection
-                      key={stage}
+                      key={`${stage}-${item.status}`}
                       stageName={stageDisplayNames[stage]}
                       isActive={isActive}
                       completedDate={!isActive ? getStageDate(stage) : undefined}
@@ -619,11 +656,15 @@ export default function ItemDetailPanel({ item, onClose }: ItemDetailPanelProps)
           <ActionBar
             status={item.status}
             hasSupplierSelected={selectedSupplierIds.length > 0}
-            selectedQuoteId={selectedQuoteId}
+            selectedQuoteId={selectedQuoteId ?? demoData.selectedQuoteId}
             supplierEmail={po?.supplier.contactEmail}
             orderMode={orderMode}
+            isAutoProgressing={isAutoProgressing}
+            isDemoActive={item.status !== "delivered"}
             onClose={onClose}
             onSendRFQ={handleSendRFQ}
+            onSendPO={handleSendPO}
+            onSendPOFromQuote={handleSendPOFromQuote}
           />
         </motion.div>
       </div>

@@ -26,7 +26,7 @@ const STAGE_CONFIG: Record<OrderStage, { label: string; className: string }> = {
   },
   clarification_received: {
     label: "Clarification Received",
-    className: "border-blue-500/30 bg-blue-500/10 text-blue-700",
+    className: "border-sky-500/30 bg-sky-500/10 text-sky-700",
   },
   rfq_received: {
     label: "RFQ Received",
@@ -38,15 +38,15 @@ const STAGE_CONFIG: Record<OrderStage, { label: string; className: string }> = {
   },
   quote_prepared: {
     label: "Quote Prepared",
-    className: "border-violet-500/30 bg-violet-500/10 text-violet-700",
+    className: "border-indigo-500/30 bg-indigo-500/10 text-indigo-700",
   },
   po_received: {
     label: "PO Received",
-    className: "border-emerald-500/30 bg-emerald-500/10 text-emerald-700",
+    className: "border-cyan-500/30 bg-cyan-500/10 text-cyan-700",
   },
   po_mismatch: {
     label: "PO Mismatch",
-    className: "border-red-500/30 bg-red-500/10 text-red-700",
+    className: "border-rose-500/30 bg-rose-500/10 text-rose-700",
   },
   pushed_to_mrp: {
     label: "Pushed to MRP",
@@ -54,15 +54,15 @@ const STAGE_CONFIG: Record<OrderStage, { label: string; className: string }> = {
   },
   po_validated: {
     label: "PO Validated",
-    className: "border-emerald-500/30 bg-emerald-500/10 text-emerald-700",
+    className: "border-teal-500/30 bg-teal-500/10 text-teal-700",
   },
   shipped: {
     label: "Shipped",
-    className: "border-blue-500/30 bg-blue-500/10 text-blue-700",
+    className: "border-orange-500/30 bg-orange-500/10 text-orange-700",
   },
   delivered: {
     label: "Delivered",
-    className: "border-emerald-500/30 bg-emerald-500/10 text-emerald-700",
+    className: "border-green-500/30 bg-green-500/10 text-green-700",
   },
 };
 

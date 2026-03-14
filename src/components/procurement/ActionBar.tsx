@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Send, XCircle, Check, AlertCircle, ExternalLink, Mail } from "lucide-react";
+import { Send, XCircle, Check, AlertCircle, ExternalLink, Mail, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { ProcurementStatus } from "@/lib/procurement-types";
 
@@ -11,10 +11,12 @@ interface ActionBarProps {
   selectedQuoteId?: string | null;
   supplierEmail?: string;
   orderMode?: "po" | "rfq";
+  isAutoProgressing?: boolean;
+  isDemoActive?: boolean;
   onClose: () => void;
-  onSendRFQ?: () => Promise<void>;
-  onDraftPO?: () => void;
+  onSendRFQ?: () => void;
   onSendPO?: () => void;
+  onSendPOFromQuote?: () => void;
 }
 
 export default function ActionBar({
@@ -23,36 +25,21 @@ export default function ActionBar({
   selectedQuoteId = null,
   supplierEmail,
   orderMode = "po",
+  isAutoProgressing = false,
+  isDemoActive = false,
   onClose,
   onSendRFQ,
-  onDraftPO,
+  onSendPO,
+  onSendPOFromQuote,
 }: ActionBarProps) {
-  const [actionStatus, setActionStatus] = useState<"idle" | "sending" | "sent" | "error" | "done">("idle");
+  const [legacyStatus, setLegacyStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState("");
 
-  const handleSendRFQ = async () => {
-    setActionStatus("sending");
-    setErrorMsg("");
-    try {
-      await onSendRFQ?.();
-      setActionStatus("sent");
-    } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : "Failed to send RFQ");
-      setActionStatus("error");
-    }
-  };
-
-  const handleDraftPO = () => {
-    onDraftPO?.();
-    setActionStatus("done");
-  };
-
-  const sentLabel = orderMode === "po" ? "PO Sent" : "RFQ Sent";
-  const sentMessage = orderMode === "po"
-    ? "PO has been sent to the selected supplier"
-    : "RFQ has been sent to the selected suppliers";
-
-  if (actionStatus === "sent") {
+  if (!isDemoActive && legacyStatus === "sent") {
+    const sentLabel = orderMode === "po" ? "PO Sent" : "RFQ Sent";
+    const sentMessage = orderMode === "po"
+      ? "PO has been sent to the selected supplier"
+      : "RFQ has been sent to the selected suppliers";
     return (
       <div className="flex-none border-t border-emerald-500/20 bg-emerald-500/5 px-7 py-4">
         <div className="flex items-center gap-3">
@@ -66,21 +53,7 @@ export default function ActionBar({
     );
   }
 
-  if (actionStatus === "done") {
-    return (
-      <div className="flex-none border-t border-emerald-500/20 bg-emerald-500/5 px-7 py-4">
-        <div className="flex items-center gap-3">
-          <div className="inline-flex items-center gap-2 bg-emerald-600 px-5 py-2.5 text-[13px] font-medium text-white">
-            <Check className="h-3.5 w-3.5" />
-            Done
-          </div>
-          <p className="text-[12px] text-emerald-700/70">Action completed</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (actionStatus === "error") {
+  if (!isDemoActive && legacyStatus === "error") {
     return (
       <div className="flex-none border-t border-red-500/20 bg-red-500/5 px-7 py-4">
         <div className="flex items-center gap-3">
@@ -91,7 +64,7 @@ export default function ActionBar({
           <p className="text-[12px] text-red-700/70 flex-1 truncate">
             {errorMsg || "Something went wrong. Please try again."}
           </p>
-          <button onClick={() => setActionStatus("idle")} className="text-[12px] text-muted-foreground underline hover:text-foreground">
+          <button onClick={() => setLegacyStatus("idle")} className="text-[12px] text-muted-foreground underline hover:text-foreground">
             Retry
           </button>
         </div>
@@ -101,6 +74,60 @@ export default function ActionBar({
 
   const isPOMode = orderMode === "po";
 
+  if (isDemoActive && isAutoProgressing) {
+    const waitMessage =
+      status === "rfq_sent"
+        ? "Waiting for supplier quotes..."
+        : status === "po_sent"
+          ? "Supplier processing order..."
+          : status === "shipped"
+            ? "Tracking updates arriving..."
+            : "Processing...";
+
+    return (
+      <div className="flex-none border-t border-blue-500/20 bg-blue-500/5 px-7 py-4">
+        <div className="flex items-center gap-3">
+          <div className="inline-flex items-center gap-2 px-5 py-2.5">
+            <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-600" />
+            <span className="text-[13px] font-medium text-blue-700 animate-pulse">
+              {waitMessage}
+            </span>
+          </div>
+          <div className="flex-1" />
+          <button
+            onClick={onClose}
+            className="inline-flex items-center gap-2 border border-border px-4 py-2.5 text-[13px] font-medium text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground"
+          >
+            <XCircle className="h-3.5 w-3.5" />
+            Close
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (isDemoActive && status === "delivered") {
+    return (
+      <div className="flex-none border-t border-emerald-500/20 bg-emerald-500/5 px-7 py-4">
+        <div className="flex items-center gap-3">
+          <div className="inline-flex items-center gap-2 bg-emerald-600 px-5 py-2.5 text-[13px] font-medium text-white">
+            <Check className="h-3.5 w-3.5" />
+            Delivery Complete
+          </div>
+          <p className="text-[12px] text-emerald-700/70">Items received and checked in at dock</p>
+          <div className="flex-1" />
+          <button
+            onClick={onClose}
+            className="inline-flex items-center gap-2 border border-border px-4 py-2.5 text-[13px] font-medium text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground"
+          >
+            <XCircle className="h-3.5 w-3.5" />
+            Close
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex-none border-t border-border bg-card px-7 py-4">
       <div className="flex items-center gap-3">
@@ -108,7 +135,13 @@ export default function ActionBar({
           <>
             {isPOMode ? (
               <button
-                onClick={handleDraftPO}
+                onClick={() => {
+                  if (isDemoActive) {
+                    onSendPO?.();
+                  } else {
+                    setLegacyStatus("sent");
+                  }
+                }}
                 disabled={!hasSupplierSelected}
                 className={cn(
                   "inline-flex items-center gap-2 border px-5 py-2.5 text-[13px] font-medium transition-colors",
@@ -122,8 +155,15 @@ export default function ActionBar({
               </button>
             ) : (
               <button
-                onClick={handleSendRFQ}
-                disabled={!hasSupplierSelected || actionStatus === "sending"}
+                onClick={() => {
+                  if (isDemoActive) {
+                    onSendRFQ?.();
+                  } else {
+                    setLegacyStatus("sending");
+                    setTimeout(() => setLegacyStatus("sent"), 500);
+                  }
+                }}
+                disabled={!hasSupplierSelected || legacyStatus === "sending"}
                 className={cn(
                   "inline-flex items-center gap-2 border px-5 py-2.5 text-[13px] font-medium transition-colors",
                   hasSupplierSelected
@@ -131,7 +171,7 @@ export default function ActionBar({
                     : "cursor-not-allowed bg-muted text-muted-foreground"
                 )}
               >
-                {actionStatus === "sending" ? (
+                {legacyStatus === "sending" ? (
                   <>
                     <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-background/30 border-t-background" />
                     Sending&hellip;
@@ -147,7 +187,7 @@ export default function ActionBar({
           </>
         )}
 
-        {status === "rfq_sent" && (
+        {status === "rfq_sent" && !isAutoProgressing && (
           <p className="text-[12px] text-muted-foreground">
             Waiting for supplier quotes. You&apos;ll be able to evaluate and select once responses arrive.
           </p>
@@ -155,7 +195,7 @@ export default function ActionBar({
 
         {status === "quotes_received" && (
           <button
-            onClick={handleDraftPO}
+            onClick={() => onSendPOFromQuote?.()}
             disabled={!selectedQuoteId}
             className={cn(
               "inline-flex items-center gap-2 border px-5 py-2.5 text-[13px] font-medium transition-colors",
@@ -169,7 +209,7 @@ export default function ActionBar({
           </button>
         )}
 
-        {status === "po_sent" && supplierEmail && (
+        {status === "po_sent" && !isAutoProgressing && supplierEmail && (
           <a
             href={`mailto:${supplierEmail}`}
             className="inline-flex items-center gap-2 border border-border px-4 py-2.5 text-[13px] font-medium text-foreground/70 transition-colors hover:bg-accent/60 hover:text-foreground"

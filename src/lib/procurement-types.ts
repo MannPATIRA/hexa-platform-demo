@@ -211,3 +211,21 @@ export interface ProcurementFilters {
   dateRange: { start: string | null; end: string | null };
   search: string;
 }
+
+export interface ProcurementDemoShipment {
+  shipmentId: string;
+  status: "draft" | "shipment_created" | "label_created" | "picked_up" | "in_transit" | "out_for_delivery" | "delivered";
+  carrier: string;
+  trackingNumber: string;
+  estimatedDelivery: string;
+  latestEventAt: string;
+}
+
+export interface ProcurementDemoData {
+  rfq?: DraftRFQ;
+  rfqEntries?: (RFQSupplierEntry & { supplier: Supplier })[];
+  quotes?: (SupplierQuote & { supplier: Supplier })[];
+  selectedQuoteId?: string;
+  po?: PurchaseOrder & { supplier: Supplier };
+  shipment?: ProcurementDemoShipment;
+}

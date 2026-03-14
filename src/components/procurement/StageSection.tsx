@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef, forwardRef } from "react";
 import { Check, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -21,20 +21,34 @@ function formatDate(iso: string): string {
   });
 }
 
-export default function StageSection({
-  stageName,
-  isActive,
-  completedDate,
-  summary,
-  isLast = false,
-  children,
-}: StageSectionProps) {
+const StageSection = forwardRef<HTMLDivElement, StageSectionProps>(function StageSection(
+  {
+    stageName,
+    isActive,
+    completedDate,
+    summary,
+    isLast = false,
+    children,
+  },
+  ref,
+) {
   const [expanded, setExpanded] = useState(isActive);
+  const prevActiveRef = useRef(isActive);
+
+  useEffect(() => {
+    if (isActive && !prevActiveRef.current) {
+      setExpanded(true);
+    }
+    if (!isActive && prevActiveRef.current) {
+      setExpanded(false);
+    }
+    prevActiveRef.current = isActive;
+  }, [isActive]);
 
   return (
-    <div>
+    <div ref={ref}>
       {isActive ? (
-        <div className="border border-blue-500/30 bg-blue-500/5">
+        <div className="border border-blue-500/30 bg-blue-500/5 animate-in fade-in slide-in-from-top-2 duration-300">
           <div className="flex items-center px-4 py-3">
             <h3 className="text-[14px] font-semibold text-foreground">
               {stageName}
@@ -88,4 +102,6 @@ export default function StageSection({
       )}
     </div>
   );
-}
+});
+
+export default StageSection;

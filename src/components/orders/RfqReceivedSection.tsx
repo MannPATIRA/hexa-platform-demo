@@ -301,7 +301,7 @@ export function RfqReceivedSection({ order, mode, demoCtx }: Props) {
       </div>
 
       {(detectedQuestions.length > 0 || clarificationAddedIds.size > 0) && (
-        <div className="space-y-3 border border-amber-500/30 bg-amber-500/5 p-5">
+        <div className="space-y-3 border border-border bg-muted/20 p-5">
           <h4 className="text-[12px] font-semibold uppercase tracking-wide text-amber-800">
             Clarification Questions Detected ({detectedQuestions.length})
           </h4>

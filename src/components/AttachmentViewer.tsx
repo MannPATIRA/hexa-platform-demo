@@ -8,11 +8,13 @@ import {
   Table2,
   Code2,
   Maximize2,
+  Download,
 } from "lucide-react";
 import {
   getAttachmentKind,
   decodeBase64Content,
   parseCsv,
+  type CsvData,
 } from "@/lib/attachment-utils";
 import { CsvTableView } from "./CsvTableView";
 import { AttachmentPreviewModal } from "./AttachmentPreviewModal";
@@ -65,58 +67,103 @@ function PdfBlobViewer({ content, mimeType, height }: { content: string; mimeTyp
   return <iframe src={url} title="PDF preview" className={`w-full ${height}`} />;
 }
 
+function useFetchedCsv(url: string | undefined, enabled: boolean) {
+  const [data, setData] = useState<CsvData | null>(null);
+  const [loading, setLoading] = useState(enabled);
+
+  useEffect(() => {
+    if (!enabled || !url) return;
+    setLoading(true);
+    fetch(url)
+      .then((r) => r.text())
+      .then((raw) => setData(parseCsv(raw)))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [url, enabled]);
+
+  return { data, loading };
+}
+
 function InlinePreview({ att }: { att: Attachment }) {
   const kind = getAttachmentKind(att.mimeType, att.fileName);
+  const needsFetch = !att.content && !!att.url && kind === "csv";
+  const { data: fetchedCsv, loading: csvLoading } = useFetchedCsv(att.url, needsFetch);
 
-  if (!att.content) {
-    return <PlaceholderPreview att={att} kind={kind} />;
+  if (att.content) {
+    if (kind === "csv") {
+      const raw = decodeBase64Content(att.content);
+      const data = parseCsv(raw);
+      return (
+        <div className="max-h-[300px] overflow-auto border border-border bg-card">
+          <CsvTableView data={data} />
+        </div>
+      );
+    }
+    if (kind === "html") {
+      const html = decodeBase64Content(att.content);
+      return (
+        <div className="overflow-hidden border border-border bg-white">
+          <iframe srcDoc={html} title={att.fileName} className="h-[300px] w-full border-0" sandbox="allow-same-origin" />
+        </div>
+      );
+    }
+    if (kind === "image") {
+      const src = `data:${att.mimeType};base64,${att.content}`;
+      return (
+        <div className="overflow-hidden border border-border bg-muted/20">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={src} alt={att.fileName} className="h-auto w-full object-contain" style={{ maxHeight: 400 }} />
+        </div>
+      );
+    }
+    if (kind === "pdf") {
+      return (
+        <div className="overflow-hidden border border-border bg-muted/20">
+          <PdfBlobViewer content={att.content} mimeType={att.mimeType} height="h-[400px]" />
+        </div>
+      );
+    }
   }
 
-  if (kind === "csv") {
-    const raw = decodeBase64Content(att.content);
-    const data = parseCsv(raw);
-    return (
-      <div className="max-h-[300px] overflow-auto border border-border bg-card">
-        <CsvTableView data={data} />
-      </div>
-    );
-  }
-
-  if (kind === "html") {
-    const html = decodeBase64Content(att.content);
-    return (
-      <div className="overflow-hidden border border-border bg-white">
-        <iframe
-          srcDoc={html}
-          title={att.fileName}
-          className="h-[300px] w-full border-0"
-          sandbox="allow-same-origin"
-        />
-      </div>
-    );
-  }
-
-  if (kind === "image") {
-    const src = `data:${att.mimeType};base64,${att.content}`;
-    return (
-      <div className="overflow-hidden border border-border bg-muted/20">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={src}
-          alt={att.fileName}
-          className="h-auto w-full object-contain"
-          style={{ maxHeight: 400 }}
-        />
-      </div>
-    );
-  }
-
-  if (kind === "pdf") {
-    return (
-      <div className="overflow-hidden border border-border bg-muted/20">
-        <PdfBlobViewer content={att.content} mimeType={att.mimeType} height="h-[400px]" />
-      </div>
-    );
+  if (att.url) {
+    if (kind === "csv") {
+      if (csvLoading) {
+        return (
+          <div className="flex h-[180px] items-center justify-center border border-border bg-muted/20">
+            <p className="text-[13px] text-muted-foreground">Loading spreadsheet...</p>
+          </div>
+        );
+      }
+      if (fetchedCsv) {
+        return (
+          <div className="max-h-[300px] overflow-auto border border-border bg-card">
+            <CsvTableView data={fetchedCsv} />
+          </div>
+        );
+      }
+    }
+    if (kind === "html") {
+      return (
+        <div className="overflow-hidden border border-border bg-white">
+          <iframe src={att.url} title={att.fileName} className="h-[300px] w-full border-0" />
+        </div>
+      );
+    }
+    if (kind === "pdf") {
+      return (
+        <div className="overflow-hidden border border-border bg-muted/20">
+          <iframe src={att.url} title={att.fileName} className="h-[400px] w-full border-0" />
+        </div>
+      );
+    }
+    if (kind === "image") {
+      return (
+        <div className="overflow-hidden border border-border bg-muted/20">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={att.url} alt={att.fileName} className="h-auto w-full object-contain" style={{ maxHeight: 400 }} />
+        </div>
+      );
+    }
   }
 
   return <PlaceholderPreview att={att} kind={kind} />;
@@ -150,6 +197,10 @@ function PlaceholderPreview({
   );
 }
 
+function hasPreviewableContent(att: Attachment): boolean {
+  return !!(att.content || att.url);
+}
+
 export function AttachmentViewer({
   attachments,
 }: {
@@ -171,37 +222,53 @@ export function AttachmentViewer({
         Source Attachments
       </h3>
 
-      {attachments.map((att) => (
-        <div key={att.id} className="space-y-2">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-[13px]">
-              <KindIcon mimeType={att.mimeType} fileName={att.fileName} />
-              <span className="font-medium text-foreground/85">
-                {att.fileName}
-              </span>
-              <span className="text-muted-foreground">
-                ({formatFileSize(att.size)})
-              </span>
+      {attachments.map((att) => {
+        const previewable = hasPreviewableContent(att);
+        return (
+          <div key={att.id} className="space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-[13px]">
+                <KindIcon mimeType={att.mimeType} fileName={att.fileName} />
+                <span className="font-medium text-foreground/85">
+                  {att.fileName}
+                </span>
+                <span className="text-muted-foreground">
+                  ({formatFileSize(att.size)})
+                </span>
+              </div>
+              <div className="flex items-center gap-1">
+                {att.url && (
+                  <a
+                    href={att.url}
+                    download={att.fileName}
+                    onClick={(e) => e.stopPropagation()}
+                    className="flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                  >
+                    <Download className="h-3 w-3" />
+                    Download
+                  </a>
+                )}
+                {previewable && (
+                  <button
+                    onClick={() => setPreviewAtt(att)}
+                    className="flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                  >
+                    <Maximize2 className="h-3 w-3" />
+                    Expand
+                  </button>
+                )}
+              </div>
             </div>
-            {att.content && (
-              <button
-                onClick={() => setPreviewAtt(att)}
-                className="flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-              >
-                <Maximize2 className="h-3 w-3" />
-                Expand
-              </button>
-            )}
-          </div>
 
-          <div
-            className={att.content ? "cursor-pointer" : ""}
-            onClick={() => att.content && setPreviewAtt(att)}
-          >
-            <InlinePreview att={att} />
+            <div
+              className={previewable ? "cursor-pointer" : ""}
+              onClick={() => previewable && setPreviewAtt(att)}
+            >
+              <InlinePreview att={att} />
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
 
       {previewAtt && (
         <AttachmentPreviewModal

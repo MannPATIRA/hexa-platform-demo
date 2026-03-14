@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { Search, Package, Wrench, Settings, Plus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -55,11 +55,16 @@ export default function ProcurementQueue() {
   const [showERPConfig, setShowERPConfig] = useState(false);
   const [showRequestForm, setShowRequestForm] = useState(false);
 
-  // TODO: Replace with real API call
-  const [items] = useState<ProcurementItem[]>(() => {
+  const [items, setItems] = useState<ProcurementItem[]>(() => {
     const ids = ["pi-001", "pi-014", "pi-013", "pi-004", "pi-011", "pi-007", "pi-008", "pi-006"];
     return ids.map((id) => procurementItems.find((i) => i.id === id)!).filter(Boolean);
   });
+
+  const handleItemUpdate = useCallback((updated: ProcurementItem) => {
+    setItems((prev) =>
+      prev.map((i) => (i.id === updated.id ? updated : i)),
+    );
+  }, []);
 
   const filtered = useMemo(() => {
     if (!search) return items;
@@ -260,7 +265,11 @@ export default function ProcurementQueue() {
       </ScrollArea>
 
       {selectedItem && (
-        <ItemDetailPanel item={selectedItem} onClose={() => setSelectedItemId(null)} />
+        <ItemDetailPanel
+          item={selectedItem}
+          onClose={() => setSelectedItemId(null)}
+          onItemUpdate={handleItemUpdate}
+        />
       )}
       {showERPConfig && <ERPScanConfig onClose={() => setShowERPConfig(false)} />}
       {showRequestForm && <EngineeringRequestForm onClose={() => setShowRequestForm(false)} />}
