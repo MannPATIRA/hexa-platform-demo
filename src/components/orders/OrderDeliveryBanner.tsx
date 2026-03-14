@@ -1,7 +1,7 @@
 "use client";
 
 import { Order } from "@/lib/types";
-import { CheckCircle2, Calendar, DollarSign, Clock, Truck } from "lucide-react";
+import { Check, Calendar, DollarSign, Clock, Truck } from "lucide-react";
 
 const CARRIER_LABELS: Record<string, string> = {
   ups: "UPS",
@@ -34,8 +34,8 @@ export function OrderDeliveryBanner({ order }: { order: Order }) {
   return (
     <div className="border border-emerald-500/30 bg-emerald-500/5">
       <div className="flex items-center gap-3 border-b border-emerald-500/20 px-5 py-4">
-        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-500/10">
-          <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+        <div className="flex h-8 w-8 items-center justify-center rounded-none border border-emerald-500/40 bg-emerald-500/10">
+          <Check className="h-4 w-4 text-emerald-600" strokeWidth={2.5} />
         </div>
         <div>
           <h3 className="text-[14px] font-semibold text-emerald-900">
