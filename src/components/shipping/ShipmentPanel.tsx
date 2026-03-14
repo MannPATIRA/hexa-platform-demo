@@ -6,12 +6,17 @@ import { Badge } from "@/components/ui/badge";
 import {
   Truck,
   Package,
-  Check,
   ExternalLink,
   Clock,
   MapPin,
   AlertTriangle,
+  Factory,
+  Warehouse,
+  Handshake,
+  PackageCheck,
+  PackageSearch,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type ShipmentWithEvents = {
@@ -19,19 +24,22 @@ type ShipmentWithEvents = {
   events: ShipmentEvent[];
 };
 
-const SHIPMENT_STAGES: OrderStageEntry[] = [
-  { status: "shipment_created", label: "Shipment Created" },
-  { status: "label_created", label: "Label Created" },
-  { status: "picked_up", label: "Picked Up" },
-  { status: "in_transit", label: "In Transit" },
-  { status: "out_for_delivery", label: "Out for Delivery" },
-  { status: "delivered", label: "Delivered" },
-];
-
-type OrderStageEntry = {
-  status: ShipmentStatus;
+type ShipmentLifecycleStage = {
+  id: string;
   label: string;
+  priority: number;
+  eventStatus?: ShipmentStatus;
+  icon: LucideIcon;
 };
+
+const SHIPMENT_STAGES: ShipmentLifecycleStage[] = [
+  { id: "in_production",        label: "In Production",                 priority: 1, eventStatus: "shipment_created",  icon: Factory },
+  { id: "ready_for_collection", label: "Ready for Shipping Collection", priority: 2, eventStatus: "label_created",     icon: Warehouse },
+  { id: "picked_up",            label: "Carrier Pickup Confirmed",      priority: 3, eventStatus: "picked_up",         icon: Handshake },
+  { id: "in_transit",           label: "In Transit",                    priority: 4, eventStatus: "in_transit",         icon: Truck },
+  { id: "out_for_delivery",     label: "Out for Delivery",              priority: 5, eventStatus: "out_for_delivery",   icon: MapPin },
+  { id: "delivered",            label: "Delivered",                     priority: 6, eventStatus: "delivered",          icon: PackageCheck },
+];
 
 const STATUS_PRIORITY: Record<string, number> = {
   draft: 0,
@@ -76,6 +84,78 @@ const CARRIER_LABELS: Record<string, string> = {
   manual: "Manual",
   other: "Other",
 };
+
+const STAGE_DESCRIPTIONS: Record<string, string> = {
+  in_production:        "Order is being manufactured and prepared for shipment.",
+  ready_for_collection: "Production complete — packaged and staged for carrier pickup.",
+  picked_up:            "Carrier has collected the shipment from the facility.",
+  in_transit:           "Shipment is moving through the carrier network.",
+  out_for_delivery:     "On the local delivery vehicle for final drop-off today.",
+  delivered:            "Shipment has been delivered and signed for.",
+};
+
+function getCurrentStage(status?: ShipmentStatus): ShipmentLifecycleStage | undefined {
+  if (!status) return undefined;
+  return SHIPMENT_STAGES.find((s) => s.eventStatus === status);
+}
+
+function CurrentStepCard({ status, carrier, trackingNumber, eta }: {
+  status?: ShipmentStatus;
+  carrier?: string;
+  trackingNumber?: string;
+  eta?: string;
+}) {
+  const stage = getCurrentStage(status);
+  if (!stage) return null;
+
+  const StageIcon = stage.icon;
+  const description = STAGE_DESCRIPTIONS[stage.id] ?? "";
+  const stepNumber = SHIPMENT_STAGES.indexOf(stage) + 1;
+  const totalSteps = SHIPMENT_STAGES.length;
+  const isDelivered = stage.id === "delivered";
+
+  const badgeClass = isDelivered
+    ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-700"
+    : "border-blue-500/30 bg-blue-500/10 text-blue-700";
+  const iconBg = isDelivered ? "bg-emerald-500/10" : "bg-blue-500/10";
+  const iconColor = isDelivered ? "text-emerald-600" : "text-blue-600";
+
+  return (
+    <div className="flex items-start gap-4">
+      <div className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-full", iconBg)}>
+        <StageIcon className={cn("h-5 w-5", iconColor)} />
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2">
+          <h4 className="text-[14px] font-semibold text-foreground">{stage.label}</h4>
+          <Badge variant="outline" className={cn("text-[10px] font-semibold", badgeClass)}>
+            {stepNumber}/{totalSteps}
+          </Badge>
+        </div>
+        <p className="mt-1 text-[12px] text-muted-foreground">{description}</p>
+        <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
+          {carrier && (
+            <span className="inline-flex items-center gap-1">
+              <Truck className="h-3 w-3" />
+              {carrier}
+            </span>
+          )}
+          {trackingNumber && (
+            <span className="inline-flex items-center gap-1 font-mono">
+              {trackingNumber}
+            </span>
+          )}
+          {eta && (
+            <span className="inline-flex items-center gap-1">
+              <Clock className="h-3 w-3" />
+              ETA {new Date(eta).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+            </span>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function ShipmentPanel({ order }: { order: Order }) {
   const [data, setData] = useState<ShipmentWithEvents | null>(null);
@@ -125,22 +205,34 @@ export default function ShipmentPanel({ order }: { order: Order }) {
   }
 
   if (!data) {
-    return (
-      <div className="border border-border bg-card p-6 shadow-sm">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
-            <Package className="h-5 w-5 text-muted-foreground" />
-          </div>
-          <div>
-            <h3 className="text-[14px] font-semibold text-foreground">
-              Awaiting Shipment
-            </h3>
-            <p className="text-[12px] text-muted-foreground">
-              Shipment tracking will appear here once the order is dispatched
-              from the warehouse.
-            </p>
+    const summary = order.shipmentSummary;
+
+    if (!summary) {
+      return (
+        <div className="border border-border bg-card p-6 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
+              <Package className="h-5 w-5 text-muted-foreground" />
+            </div>
+            <div>
+              <h3 className="text-[14px] font-semibold text-foreground">Awaiting Shipment</h3>
+              <p className="text-[12px] text-muted-foreground">
+                Shipment tracking will appear here once the order is dispatched from the warehouse.
+              </p>
+            </div>
           </div>
         </div>
+      );
+    }
+
+    return (
+      <div className="border border-border bg-card p-6 shadow-sm">
+        <CurrentStepCard
+          status={summary.status}
+          carrier={CARRIER_LABELS[summary.carrier] ?? summary.carrier}
+          trackingNumber={summary.trackingNumber}
+          eta={summary.estimatedDelivery}
+        />
       </div>
     );
   }
@@ -167,7 +259,7 @@ export default function ShipmentPanel({ order }: { order: Order }) {
     <div className="border border-border bg-card shadow-sm">
       <div className="flex items-center justify-between gap-4 border-b border-border px-6 py-4">
         <div className="flex items-center gap-3">
-          <Truck className="h-5 w-5 text-foreground/70" />
+          <PackageSearch className="h-5 w-5 text-foreground/70" />
           <div>
             <h3 className="text-[14px] font-semibold text-foreground">
               Shipment Tracking
@@ -257,92 +349,12 @@ export default function ShipmentPanel({ order }: { order: Order }) {
       </div>
 
       <div className="px-6 py-5">
-        <p className="mb-4 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-          Tracking Timeline
-        </p>
-        <div className="space-y-0">
-          {[...SHIPMENT_STAGES].reverse().map((stage, idx, arr) => {
-            const stagePriority = STATUS_PRIORITY[stage.status] ?? 0;
-            const matchedEvent = eventByStatus.get(stage.status);
-            const isCompleted = stagePriority < currentPriority;
-            const isActive = stage.status === shipment.status;
-            const isPending = stagePriority > currentPriority;
-            const isLast = idx === arr.length - 1;
-
-            return (
-              <div key={stage.status}>
-                <div className="flex gap-3 items-start">
-                  <div className="mt-0.5 shrink-0">
-                    {isCompleted ? (
-                      <div className="flex h-[18px] w-[18px] items-center justify-center rounded-none border border-emerald-500/40 bg-emerald-500/10">
-                        <Check className="h-2.5 w-2.5 text-emerald-600" strokeWidth={3} />
-                      </div>
-                    ) : isActive ? (
-                      <div className="h-[18px] w-[18px]" />
-                    ) : (
-                      <div className="flex h-[18px] w-[18px] items-center justify-center rounded-none border border-muted-foreground/20 bg-muted/30" />
-                    )}
-                  </div>
-                  <div>
-                    <p
-                      className={cn(
-                        "text-[13px] font-medium leading-5",
-                        isPending
-                          ? "text-muted-foreground/50"
-                          : "text-foreground/85"
-                      )}
-                    >
-                      {stage.label}
-                    </p>
-                    {matchedEvent && (
-                      <p className="mt-0.5 text-[11px] text-muted-foreground">
-                        {new Date(matchedEvent.occurredAt).toLocaleString(
-                          "en-US",
-                          {
-                            month: "short",
-                            day: "numeric",
-                            year: "numeric",
-                            hour: "numeric",
-                            minute: "2-digit",
-                          }
-                        )}
-                      </p>
-                    )}
-                    {matchedEvent?.message && (
-                      <p className="mt-0.5 text-[11px] text-muted-foreground/80">
-                        {matchedEvent.message}
-                      </p>
-                    )}
-                    {matchedEvent?.trackingNumber &&
-                      stage.status === "label_created" && (
-                        <p className="mt-0.5 text-[11px] font-mono text-muted-foreground">
-                          Tracking: {matchedEvent.trackingNumber}
-                        </p>
-                      )}
-                    {matchedEvent?.estimatedDelivery &&
-                      stage.status === "in_transit" && (
-                        <p className="mt-0.5 text-[11px] text-muted-foreground">
-                          Est. delivery:{" "}
-                          {new Date(
-                            matchedEvent.estimatedDelivery
-                          ).toLocaleDateString("en-US", {
-                            month: "short",
-                            day: "numeric",
-                            year: "numeric",
-                          })}
-                        </p>
-                      )}
-                  </div>
-                </div>
-                {!isLast && (
-                  <div className="ml-[8px] h-5">
-                    <div className="h-full border-l-[1.5px] border-dashed border-border" />
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
+        <CurrentStepCard
+          status={shipment.status}
+          carrier={CARRIER_LABELS[shipment.carrier] ?? shipment.carrier}
+          trackingNumber={shipment.trackingNumber}
+          eta={shipment.estimatedDelivery}
+        />
 
         {(shipment.status === "exception" ||
           shipment.status === "delayed") && (
