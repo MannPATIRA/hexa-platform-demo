@@ -17,7 +17,7 @@ Open [http://localhost:3000/taskpane](http://localhost:3000/taskpane) to preview
 1. Push this repo to GitHub
 2. Go to [vercel.com](https://vercel.com) and import the repo
 3. Framework preset will auto-detect as Next.js — deploy with defaults
-4. Note your Vercel URL (e.g., `https://hexa-platform-demo.vercel.app`)
+4. Note your Vercel URL (e.g., `https://hexa-platform-demo-2bnr.vercel.app`)
 
 ### Update the manifest with your domain
 
@@ -29,7 +29,7 @@ https://YOUR_VERCEL_DOMAIN/taskpane
 ```
 with:
 ```
-https://hexa-platform-demo.vercel.app/taskpane
+https://hexa-platform-demo-2bnr.vercel.app/taskpane
 ```
 
 Then commit and push again so Vercel redeploys with the correct URLs.
