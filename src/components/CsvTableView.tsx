@@ -12,8 +12,8 @@ export function CsvTableView({ data }: { data: CsvData }) {
   }
 
   return (
-    <div className="overflow-auto">
-      <table className="w-full border-collapse text-[12px]">
+    <div className="overflow-x-auto [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-track]:bg-muted/40 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-muted-foreground/25 [&::-webkit-scrollbar-thumb]:hover:bg-muted-foreground/40" style={{ scrollbarColor: 'rgba(0,0,0,0.2) rgba(0,0,0,0.05)' }}>
+      <table className="min-w-full border-collapse text-[12px]">
         <thead>
           <tr className="border-b border-border bg-muted/60">
             {data.headers.map((header, i) => (

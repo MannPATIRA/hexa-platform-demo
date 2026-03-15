@@ -188,10 +188,10 @@ export const mockOrders: Order[] = [
     attachments: [
       {
         id: "att-demo-004",
-        fileName: "RFQ-Acme-Hydraulic-2026.pdf",
-        mimeType: "application/pdf",
-        size: 3_204,
-        url: "/rfq-acme-hydraulic-2026.pdf",
+        fileName: "RFQ-Acme-Hydraulic-2026.csv",
+        mimeType: "text/csv",
+        size: 312,
+        url: "/rfq-acme-hydraulic-2026.csv",
       },
     ],
     lineItems: [
@@ -277,7 +277,7 @@ export const mockOrders: Order[] = [
     totalItems: 3,
     parseConfidence: 91,
     parseMissingFields: [],
-    ingestionSourceLabel: "Outlook - RFQ PDF",
+    ingestionSourceLabel: "Outlook - RFQ CSV",
     demoFlow: {
       scenario: "rfq_csv",
       stage: "rfq_received",
