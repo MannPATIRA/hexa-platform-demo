@@ -13,6 +13,13 @@ import {
   type ProcurementDemoStep,
   type DemoContext,
 } from "@/lib/procurement-demo-steps";
+import {
+  getDraftRFQ,
+  getDraftRFQForItem,
+  getRFQSupplierEntries,
+  getQuotesForRFQ,
+  getPurchaseOrder,
+} from "@/data/procurement-data";
 
 interface DemoState {
   item: ProcurementItem;
@@ -73,6 +80,34 @@ function reducer(state: DemoState, action: DemoAction): DemoState {
   }
 }
 
+function buildInitialDemoData(item: ProcurementItem): ProcurementDemoData {
+  const data: ProcurementDemoData = {};
+
+  if (item.activeRfqId) {
+    const rfq = getDraftRFQ(item.activeRfqId);
+    if (rfq) {
+      data.rfq = rfq;
+      data.rfqEntries = getRFQSupplierEntries(item.activeRfqId);
+    }
+    const quotes = getQuotesForRFQ(item.activeRfqId);
+    if (quotes.length > 0) data.quotes = quotes;
+  } else {
+    const rfq = getDraftRFQForItem(item.id);
+    if (rfq) data.rfq = rfq;
+  }
+
+  if (item.purchaseOrderId) {
+    const po = getPurchaseOrder(item.purchaseOrderId);
+    if (po) data.po = po;
+  }
+
+  if (item.selectedQuoteId) {
+    data.selectedQuoteId = item.selectedQuoteId;
+  }
+
+  return data;
+}
+
 export function useProcurementDemoFlow(
   initialItem: ProcurementItem,
   onItemUpdate?: (item: ProcurementItem) => void,
@@ -91,15 +126,20 @@ export function useProcurementDemoFlow(
     ? getStartingStepIndex(autoStartPath, initialItem.status)
     : 0;
 
+  const initialDemoData = needsAutoStart
+    ? buildInitialDemoData(initialItem)
+    : {};
+  const initialSupplierIds = initialDemoData.rfq?.supplierIds ?? [];
+
   const [state, dispatch] = useReducer(reducer, {
     item: initialItem,
-    demoData: {},
+    demoData: initialDemoData,
     steps: autoStartSteps,
     stepIndex: autoStartIndex,
     isAutoProgressing: false,
     isActive: needsAutoStart,
     path: autoStartPath,
-    ctx: { selectedSupplierIds: [] },
+    ctx: { selectedSupplierIds: initialSupplierIds },
   });
 
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);

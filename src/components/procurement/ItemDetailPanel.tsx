@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { X, Package, Wrench, Calendar, Mail, Clock, Star, FileText, ArrowLeftRight, FileDown, Table2, Loader2 } from "lucide-react";
+import { X, Package, Wrench, Calendar, Mail, Clock, Star, FileText, ArrowLeftRight, FileDown, Table2, Loader2, Check } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
