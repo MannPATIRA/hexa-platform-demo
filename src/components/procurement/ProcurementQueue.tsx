@@ -68,6 +68,13 @@ const priorityBadgeClass: Record<ProcurementPriority, string> = {
 
 const NEEDS_ATTENTION_STATUSES: ProcurementStatus[] = ["flagged", "quotes_received"];
 type DateSort = "newest" | "oldest";
+const SARAH_PROCUREMENT_ITEM_ID = "pi-015";
+const SARAH_PROCUREMENT_VISIBLE_KEY = "hexa:procurement:sarah-visible";
+
+function isSarahProcurementVisible(): boolean {
+  if (typeof window === "undefined") return false;
+  return window.localStorage.getItem(SARAH_PROCUREMENT_VISIBLE_KEY) === "1";
+}
 
 export default function ProcurementQueue() {
   const [search, setSearch] = useState("");
@@ -80,7 +87,10 @@ export default function ProcurementQueue() {
   const [attentionOnly, setAttentionOnly] = useState(false);
 
   const [items, setItems] = useState<ProcurementItem[]>(() => {
-    const ids = ["pi-001", "pi-013", "pi-004", "pi-015", "pi-011", "pi-006"];
+    const ids = ["pi-001", "pi-013", "pi-004", "pi-011", "pi-006"];
+    if (isSarahProcurementVisible()) {
+      ids.splice(3, 0, SARAH_PROCUREMENT_ITEM_ID);
+    }
     return ids.map((id) => procurementItems.find((i) => i.id === id)!).filter(Boolean);
   });
 
