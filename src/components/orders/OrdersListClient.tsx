@@ -14,6 +14,15 @@ import {
 } from "@/components/ui/select";
 import { Mail, ShoppingCart, Phone, ListFilter, ArrowUpDown } from "lucide-react";
 import type { Order, OrderSource, OrderStage } from "@/lib/types";
+import { cn } from "@/lib/utils";
+
+const NEEDS_ATTENTION_STAGES: OrderStage[] = [
+  "rfq_received",
+  "needs_clarification",
+  "clarification_received",
+  "po_received",
+  "po_mismatch",
+];
 
 const STAGE_CONFIG: Record<OrderStage, { label: string; className: string }> = {
   needs_clarification: {
@@ -104,13 +113,14 @@ export function OrdersListClient({ orders }: { orders: Order[] }) {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [sourceFilter, setSourceFilter] = useState<string>("email");
   const [dateSort, setDateSort] = useState<DateSort>("newest");
+  const [attentionOnly, setAttentionOnly] = useState(false);
 
   const availableStages = useMemo(() => {
     const stages = new Set(orders.map((o) => o.stage));
     return Object.keys(STAGE_CONFIG).filter((s) => stages.has(s as OrderStage)) as OrderStage[];
   }, [orders]);
 
-  const filteredOrders = useMemo(() => {
+  const baseFilteredOrders = useMemo(() => {
     let result = orders;
 
     if (statusFilter !== "all") {
@@ -120,6 +130,23 @@ export function OrdersListClient({ orders }: { orders: Order[] }) {
       result = result.filter((o) => o.source === sourceFilter);
     }
 
+    return result;
+  }, [orders, statusFilter, sourceFilter]);
+
+  const needAttentionCount = useMemo(
+    () =>
+      baseFilteredOrders.filter((o) => NEEDS_ATTENTION_STAGES.includes(o.stage))
+        .length,
+    [baseFilteredOrders],
+  );
+
+  const filteredOrders = useMemo(() => {
+    let result = baseFilteredOrders;
+
+    if (attentionOnly) {
+      result = result.filter((o) => NEEDS_ATTENTION_STAGES.includes(o.stage));
+    }
+
     result = [...result].sort((a, b) => {
       const da = new Date(a.createdAt).getTime();
       const db = new Date(b.createdAt).getTime();
@@ -127,7 +154,7 @@ export function OrdersListClient({ orders }: { orders: Order[] }) {
     });
 
     return result;
-  }, [orders, statusFilter, sourceFilter, dateSort]);
+  }, [baseFilteredOrders, dateSort, attentionOnly]);
 
   return (
     <>
@@ -165,6 +192,21 @@ export function OrdersListClient({ orders }: { orders: Order[] }) {
             ))}
           </SelectContent>
         </Select>
+
+        {needAttentionCount > 0 && (
+          <button
+            type="button"
+            onClick={() => setAttentionOnly((prev) => !prev)}
+            className={cn(
+              "shrink-0 inline-flex items-center gap-1.5 border px-3 py-1.5 text-xs font-semibold transition-colors",
+              attentionOnly
+                ? "border-amber-600 bg-amber-500/25 text-amber-800 ring-1 ring-amber-500/40"
+                : "border-amber-500/30 bg-amber-500/10 text-amber-700 hover:bg-amber-500/20"
+            )}
+          >
+            {needAttentionCount} Need Attention
+          </button>
+        )}
 
         <div className="ml-auto flex items-center gap-2">
           <ArrowUpDown size={14} className="text-muted-foreground" />

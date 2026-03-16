@@ -1,23 +1,13 @@
 import { getAllOrders } from "@/lib/store";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { ResetOrdersButton } from "@/components/orders/ResetOrdersButton";
 import { OrdersListClient } from "@/components/orders/OrdersListClient";
 import { Search } from "lucide-react";
-import { OrderStage } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
-const NEEDS_ATTENTION_STAGES: OrderStage[] = [
-  "needs_clarification",
-  "po_mismatch",
-];
-
 export default async function OrdersPage() {
   const orders = await getAllOrders();
-  const attentionCount = orders.filter((o) =>
-    NEEDS_ATTENTION_STAGES.includes(o.stage)
-  ).length;
 
   return (
     <div className="flex h-full flex-col bg-card">
@@ -26,6 +16,9 @@ export default async function OrdersPage() {
           <h1 className="font-display text-2xl font-medium leading-none text-foreground">
             Orders
           </h1>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            Track incoming orders from RFQ to delivery.
+          </p>
         </div>
         <div className="flex items-center gap-3">
           <ResetOrdersButton />
@@ -40,20 +33,6 @@ export default async function OrdersPage() {
               className="h-9 w-52 border-border bg-background pl-8 text-xs text-muted-foreground"
             />
           </div>
-          <Badge
-            variant="secondary"
-            className={
-              attentionCount > 0
-                ? "gap-2 border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-amber-700"
-                : "gap-2 border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-emerald-600"
-            }
-          >
-            <span className="text-xs font-semibold">
-              {attentionCount > 0
-                ? `${attentionCount} Need Review`
-                : "All Clear"}
-            </span>
-          </Badge>
         </div>
       </div>
 

@@ -1,11 +1,27 @@
 "use client";
 
 import { useState, useMemo, useCallback } from "react";
-import { Search, Package, Wrench, Settings, Plus, User } from "lucide-react";
+import {
+  Search,
+  Package,
+  Wrench,
+  Settings,
+  Plus,
+  User,
+  ListFilter,
+  ArrowUpDown,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   procurementItems,
   getDaysOfStockRemaining,
@@ -50,11 +66,18 @@ const priorityBadgeClass: Record<ProcurementPriority, string> = {
   low: "border-border bg-muted/50 text-muted-foreground",
 };
 
+const NEEDS_ATTENTION_STATUSES: ProcurementStatus[] = ["flagged", "quotes_received"];
+type DateSort = "newest" | "oldest";
+
 export default function ProcurementQueue() {
   const [search, setSearch] = useState("");
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [showERPConfig, setShowERPConfig] = useState(false);
   const [showRequestForm, setShowRequestForm] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<ProcurementStatus | "all">("all");
+  const [priorityFilter, setPriorityFilter] = useState<ProcurementPriority | "all">("all");
+  const [dateSort, setDateSort] = useState<DateSort>("newest");
+  const [attentionOnly, setAttentionOnly] = useState(false);
 
   const [items, setItems] = useState<ProcurementItem[]>(() => {
     const ids = ["pi-001", "pi-013", "pi-004", "pi-015", "pi-011", "pi-006"];
@@ -67,20 +90,45 @@ export default function ProcurementQueue() {
     );
   }, []);
 
-  const filtered = useMemo(() => {
-    if (!search) return items;
-    const q = search.toLowerCase();
-    return items.filter(
-      (i) =>
-        i.name.toLowerCase().includes(q) ||
-        i.sku.toLowerCase().includes(q) ||
-        i.requestedBy.toLowerCase().includes(q)
-    );
-  }, [items, search]);
+  const baseFiltered = useMemo(() => {
+    let result = items;
+    if (statusFilter !== "all") {
+      result = result.filter((i) => i.status === statusFilter);
+    }
+    if (priorityFilter !== "all") {
+      result = result.filter((i) => i.priority === priorityFilter);
+    }
+    if (search) {
+      const q = search.toLowerCase();
+      result = result.filter(
+        (i) =>
+          i.name.toLowerCase().includes(q) ||
+          i.sku.toLowerCase().includes(q) ||
+          i.requestedBy.toLowerCase().includes(q),
+      );
+    }
+    return result;
+  }, [items, search, statusFilter, priorityFilter]);
 
-  const needAttentionCount = items.filter(
-    (i) => i.status === "flagged" || i.status === "quotes_received"
-  ).length;
+  const needAttentionCount = useMemo(
+    () => baseFiltered.filter((i) => NEEDS_ATTENTION_STATUSES.includes(i.status)).length,
+    [baseFiltered],
+  );
+
+  const filtered = useMemo(() => {
+    let result = baseFiltered;
+    if (attentionOnly) {
+      result = result.filter((i) => NEEDS_ATTENTION_STATUSES.includes(i.status));
+    }
+
+    result = [...result].sort((a, b) => {
+      const da = new Date(a.flaggedAt).getTime();
+      const db = new Date(b.flaggedAt).getTime();
+      return dateSort === "newest" ? db - da : da - db;
+    });
+
+    return result;
+  }, [baseFiltered, attentionOnly, dateSort]);
 
   const selectedItem = selectedItemId ? items.find((i) => i.id === selectedItemId) ?? null : null;
 
@@ -93,7 +141,7 @@ export default function ProcurementQueue() {
             Procurement
           </h1>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            Reorder alerts, engineering requests, and supplier RFQs
+            Manage stock alerts and supplier sourcing requests.
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -109,16 +157,6 @@ export default function ProcurementQueue() {
               className="h-9 w-52 border-border bg-background pl-8 text-xs text-muted-foreground"
             />
           </div>
-          {needAttentionCount > 0 && (
-            <Badge
-              variant="secondary"
-              className="gap-2 border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-amber-700"
-            >
-              <span className="text-xs font-semibold">
-                {needAttentionCount} Need Attention
-              </span>
-            </Badge>
-          )}
           <button
             onClick={() => setShowERPConfig(true)}
             className="inline-flex items-center gap-1.5 border border-border px-3 py-1.5 text-[12px] text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground"
@@ -133,6 +171,72 @@ export default function ProcurementQueue() {
             <Plus className="h-3.5 w-3.5" />
             New Request
           </button>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-3 border-b border-border px-7 py-2.5">
+        <ListFilter size={14} className="text-muted-foreground" />
+        <span className="mr-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+          Filters
+        </span>
+
+        <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as ProcurementStatus | "all")}>
+          <SelectTrigger size="sm" className="h-7 min-w-[140px] border-border bg-background text-[12px]">
+            <SelectValue placeholder="All Statuses" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Statuses</SelectItem>
+            <SelectItem value="flagged">Flagged</SelectItem>
+            <SelectItem value="rfq_sent">RFQ Sent</SelectItem>
+            <SelectItem value="quotes_received">Quotes In</SelectItem>
+            <SelectItem value="po_sent">PO Sent</SelectItem>
+            <SelectItem value="shipped">Shipped</SelectItem>
+            <SelectItem value="delivered">Delivered</SelectItem>
+          </SelectContent>
+        </Select>
+
+        <Select
+          value={priorityFilter}
+          onValueChange={(v) => setPriorityFilter(v as ProcurementPriority | "all")}
+        >
+          <SelectTrigger size="sm" className="h-7 min-w-[130px] border-border bg-background text-[12px]">
+            <SelectValue placeholder="All Priorities" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Priorities</SelectItem>
+            <SelectItem value="critical">Critical</SelectItem>
+            <SelectItem value="high">High</SelectItem>
+            <SelectItem value="medium">Medium</SelectItem>
+            <SelectItem value="low">Low</SelectItem>
+          </SelectContent>
+        </Select>
+
+        {needAttentionCount > 0 && (
+          <button
+            type="button"
+            onClick={() => setAttentionOnly((prev) => !prev)}
+            className={cn(
+              "shrink-0 inline-flex items-center gap-1.5 border px-3 py-1.5 text-xs font-semibold transition-colors",
+              attentionOnly
+                ? "border-amber-600 bg-amber-500/25 text-amber-800 ring-1 ring-amber-500/40"
+                : "border-amber-500/30 bg-amber-500/10 text-amber-700 hover:bg-amber-500/20",
+            )}
+          >
+            {needAttentionCount} Need Attention
+          </button>
+        )}
+
+        <div className="ml-auto flex items-center gap-2">
+          <ArrowUpDown size={14} className="text-muted-foreground" />
+          <Select value={dateSort} onValueChange={(v) => setDateSort(v as DateSort)}>
+            <SelectTrigger size="sm" className="h-7 min-w-[140px] border-border bg-background text-[12px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="newest">Newest First</SelectItem>
+              <SelectItem value="oldest">Oldest First</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
 

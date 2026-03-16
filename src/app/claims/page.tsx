@@ -27,6 +27,8 @@ import { creditOpportunities, slaSuppliers, metricLabels } from "@/data/sla-data
 import type { Recommendation, Status } from "@/data/sla-data";
 import { cn } from "@/lib/utils";
 
+const NEEDS_ATTENTION_STATUS: Status = "OPEN";
+
 function RecommendationBadge({ rec }: { rec: Recommendation }) {
   const label = rec === "CLAIM" ? "Claim" : rec === "DO_NOT_CLAIM" ? "Auto-Close" : "Review";
   return (
@@ -60,8 +62,9 @@ function ClaimsContent() {
   const [recFilter, setRecFilter] = useState(searchParams.get("recommendation") || "all");
   const [sortBy, setSortBy] = useState<"date" | "amount">("date");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [attentionOnly, setAttentionOnly] = useState(false);
 
-  const filtered = creditOpportunities
+  const baseFiltered = creditOpportunities
     .filter((o) => supplierFilter === "all" || o.supplierId === supplierFilter)
     .filter((o) => statusFilter === "all" || o.status === statusFilter)
     .filter((o) => recFilter === "all" || o.recommendation === recFilter)
@@ -72,7 +75,14 @@ function ClaimsContent() {
         o.poNumber.toLowerCase().includes(q) ||
         o.supplierName.toLowerCase().includes(q)
       );
-    })
+    });
+
+  const needAttentionCount = baseFiltered.filter(
+    (o) => o.status === NEEDS_ATTENTION_STATUS,
+  ).length;
+
+  const filtered = baseFiltered
+    .filter((o) => !attentionOnly || o.status === NEEDS_ATTENTION_STATUS)
     .sort((a, b) => {
       if (sortBy === "amount") {
         return sortDir === "desc"
@@ -92,10 +102,6 @@ function ClaimsContent() {
       setSortDir("desc");
     }
   };
-
-  const needAttentionCount = creditOpportunities.filter(
-    (o) => o.status === "OPEN"
-  ).length;
 
   return (
     <div className="flex h-full flex-col bg-card">
@@ -162,14 +168,18 @@ function ClaimsContent() {
           </SelectContent>
         </Select>
         {needAttentionCount > 0 && (
-          <Badge
-            variant="secondary"
-            className="shrink-0 gap-1.5 border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-amber-700"
+          <button
+            type="button"
+            onClick={() => setAttentionOnly((prev) => !prev)}
+            className={cn(
+              "shrink-0 inline-flex items-center gap-1.5 border px-3 py-1.5 text-xs font-semibold transition-colors",
+              attentionOnly
+                ? "border-amber-600 bg-amber-500/25 text-amber-800 ring-1 ring-amber-500/40"
+                : "border-amber-500/30 bg-amber-500/10 text-amber-700 hover:bg-amber-500/20"
+            )}
           >
-            <span className="text-xs font-semibold">
-              {needAttentionCount} Need Attention
-            </span>
-          </Badge>
+            {needAttentionCount} Need Attention
+          </button>
         )}
         <div className="flex-1" />
         <button
@@ -239,6 +249,7 @@ function ClaimsContent() {
                   setSupplierFilter("all");
                   setStatusFilter("all");
                   setRecFilter("all");
+                  setAttentionOnly(false);
                 }}
                 className="text-xs"
               >
