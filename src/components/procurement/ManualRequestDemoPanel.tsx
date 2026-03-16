@@ -10,7 +10,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
-import type { ProcurementItem, ProcurementDemoShipment } from "@/lib/procurement-types";
+import type { ProcurementItem, ProcurementDemoShipment, ProcurementStatus } from "@/lib/procurement-types";
 import ProcurementShipmentPanel from "./ProcurementShipmentPanel";
 
 interface Props {
@@ -74,6 +74,27 @@ const SHIPMENT_SEQUENCE: { status: ShipmentStage; delayMs: number }[] = [
   { status: "delivered", delayMs: 5000 },
 ];
 
+interface CachedDemoState {
+  activeIndex: number;
+  expandedNodes: Set<string>;
+  selectedSupplier: string;
+  confirmationReceived: boolean;
+  shipmentStatus: ShipmentStage;
+}
+
+const demoStateCache = new Map<string, CachedDemoState>();
+
+const NODE_STATUS_MAP: Record<NodeId, ProcurementStatus> = {
+  email_parsed: "flagged",
+  rfq_generated: "rfq_sent",
+  identifying_suppliers: "rfq_sent",
+  quotes_received: "quotes_received",
+  supplier_selection: "quotes_received",
+  po_sent: "po_sent",
+  confirmation: "po_sent",
+  shipment_tracking: "shipped",
+};
+
 const PARSED_PARTS = [
   { line: 1, name: "Pneumatic Cylinder 40mm Bore × 200mm Stroke", sku: "PNE-CYL-40-200", qty: 12, uom: "EA" },
   { line: 2, name: "Cylinder Mounting Bracket Kit", sku: "PNE-MNT-BRK-40", qty: 12, uom: "EA" },
@@ -131,14 +152,14 @@ function shipDateForSupplier(leadDays: number): string {
 /* ─── Main Component ──────────────────────────────────────────────────────── */
 
 export default function ManualRequestDemoPanel({ item, onClose, onItemUpdate }: Props) {
-  const [activeIndex, setActiveIndex] = useState(0);
-  const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
-  const [selectedSupplier, setSelectedSupplier] = useState(RECOMMENDED);
-  const [confirmationReceived, setConfirmationReceived] = useState(false);
-  const [shipmentStatus, setShipmentStatus] = useState<ShipmentStage>("draft");
+  const cached = demoStateCache.get(item.id);
+  const [activeIndex, setActiveIndex] = useState(cached?.activeIndex ?? 0);
+  const [expandedNodes, setExpandedNodes] = useState<Set<string>>(cached?.expandedNodes ?? new Set());
+  const [selectedSupplier, setSelectedSupplier] = useState(cached?.selectedSupplier ?? RECOMMENDED);
+  const [confirmationReceived, setConfirmationReceived] = useState(cached?.confirmationReceived ?? false);
+  const [shipmentStatus, setShipmentStatus] = useState<ShipmentStage>(cached?.shipmentStatus ?? "draft");
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const deliveredCalledRef = useRef(false);
 
   const activeNodeId = NODE_IDS[activeIndex];
 
@@ -190,13 +211,34 @@ export default function ManualRequestDemoPanel({ item, onClose, onItemUpdate }: 
     return () => clearTimeout(timer);
   }, [activeNodeId, shipmentStatus]);
 
-  // update parent when delivered
+  // Sync procurement status to parent table at each step transition
+  const itemRef = useRef(item);
+  itemRef.current = item;
+  const onItemUpdateRef = useRef(onItemUpdate);
+  onItemUpdateRef.current = onItemUpdate;
+
   useEffect(() => {
-    if (shipmentStatus === "delivered" && !deliveredCalledRef.current && onItemUpdate) {
-      deliveredCalledRef.current = true;
-      onItemUpdate({ ...item, status: "delivered" });
+    if (!onItemUpdateRef.current) return;
+    const nodeId = NODE_IDS[activeIndex];
+    const targetStatus: ProcurementStatus =
+      nodeId === "shipment_tracking" && shipmentStatus === "delivered"
+        ? "delivered"
+        : NODE_STATUS_MAP[nodeId];
+    if (targetStatus !== itemRef.current.status) {
+      onItemUpdateRef.current({ ...itemRef.current, status: targetStatus });
     }
-  }, [shipmentStatus, onItemUpdate, item]);
+  }, [activeIndex, shipmentStatus]);
+
+  // Persist demo state across panel close/open (resets on page refresh)
+  useEffect(() => {
+    demoStateCache.set(item.id, {
+      activeIndex,
+      expandedNodes,
+      selectedSupplier,
+      confirmationReceived,
+      shipmentStatus,
+    });
+  }, [item.id, activeIndex, expandedNodes, selectedSupplier, confirmationReceived, shipmentStatus]);
 
   useEffect(() => {
     requestAnimationFrame(() => {
