@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { Order, InventoryStatus } from "@/lib/types";
 import { checkInventory } from "@/lib/bom-data";
 import { Check, Send, Download, ArrowRight } from "lucide-react";
@@ -54,6 +55,7 @@ export function QuoteDraftSection({ order, mode }: Props) {
     })
   );
 
+  const router = useRouter();
   const [markupPct, setMarkupPct] = useState(15);
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [sending, setSending] = useState(false);
@@ -116,11 +118,11 @@ export function QuoteDraftSection({ order, mode }: Props) {
         }),
       });
       setSent(true);
-      setTimeout(() => window.location.reload(), 800);
+      setTimeout(() => router.refresh(), 800);
     } catch {
       setSending(false);
     }
-  }, [order, quoteNumber, rows, total]);
+  }, [order, quoteNumber, rows, total, router]);
 
   if (mode === "completed") {
     return (
@@ -196,13 +198,13 @@ export function QuoteDraftSection({ order, mode }: Props) {
                           <button
                             type="button"
                             onClick={() => toggleRow(row.id)}
-                            className="mt-1 text-[10px] text-cyan-700 hover:underline"
+                            className="mt-1 text-[10px] text-blue-700 hover:underline"
                           >
                             {isExpanded ? "Hide" : "Show"} {row.components.length} components
                           </button>
                         )}
                         {isExpanded && (
-                          <div className="mt-2 space-y-0.5 border-l-2 border-cyan-500/20 pl-3">
+                          <div className="mt-2 space-y-0.5 border-l-2 border-blue-500/20 pl-3">
                             {row.components.map((c, ci) => (
                               <div key={ci} className="text-[11px] text-muted-foreground flex items-center gap-2">
                                 <span className="font-mono text-[10px]">{c.sku}</span>

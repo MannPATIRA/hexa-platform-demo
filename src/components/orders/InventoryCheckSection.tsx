@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { Order, InventoryStatus } from "@/lib/types";
 import { checkInventory } from "@/lib/bom-data";
 import { ArrowRight, Check, Package, AlertTriangle } from "lucide-react";
@@ -33,6 +34,7 @@ export function InventoryCheckSection({ order, mode }: Props) {
     return checkInventory(order.lineItems);
   }, [order.inventoryStatus, order.lineItems]);
 
+  const router = useRouter();
   const [sentToProcurement, setSentToProcurement] = useState<Set<string>>(new Set());
   const [advancing, setAdvancing] = useState(false);
 
@@ -64,11 +66,11 @@ export function InventoryCheckSection({ order, mode }: Props) {
           inventoryStatus: inventory,
         }),
       });
-      window.location.reload();
+      router.refresh();
     } catch {
       setAdvancing(false);
     }
-  }, [order.id, inventory]);
+  }, [order.id, inventory, router]);
 
   if (mode === "completed") {
     return (

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { Order, BomComponent } from "@/lib/types";
 import { explodeBom } from "@/lib/bom-data";
 import { ChevronDown, Plus, Package, FileText, ArrowRight, Check, X } from "lucide-react";
@@ -18,6 +19,7 @@ export function BomReviewSection({ order, mode }: Props) {
   const [expandedIds, setExpandedIds] = useState<Set<string>>(
     () => new Set(explodedItems.filter((li) => (li.bomComponents?.length ?? 0) > 1).map((li) => li.id))
   );
+  const router = useRouter();
   const [addingToId, setAddingToId] = useState<string | null>(null);
   const [newPartName, setNewPartName] = useState("");
   const [newPartQty, setNewPartQty] = useState(1);
@@ -81,11 +83,11 @@ export function BomReviewSection({ order, mode }: Props) {
           })),
         }),
       });
-      window.location.reload();
+      router.refresh();
     } catch {
       setAdvancing(false);
     }
-  }, [order.id, lineItems]);
+  }, [order.id, lineItems, router]);
 
   if (mode === "completed") {
     return (
@@ -110,7 +112,7 @@ export function BomReviewSection({ order, mode }: Props) {
       <div className="flex items-center gap-4 border border-border bg-card px-4 py-3">
         <div className="h-1.5 flex-1 overflow-hidden bg-muted">
           <div
-            className="h-full bg-cyan-500 transition-all duration-500 ease-out"
+            className="h-full bg-blue-500 transition-all duration-500 ease-out"
             style={{ width: "100%" }}
           />
         </div>
@@ -142,14 +144,14 @@ export function BomReviewSection({ order, mode }: Props) {
                   <p className="mt-0.5 text-[11px] text-muted-foreground">
                     {item.parsedSku ?? "No SKU"} · {item.parsedQuantity} {item.parsedUom}
                     {isAssembly && (
-                      <span className="ml-2 text-cyan-700 font-medium">
+                      <span className="ml-2 text-blue-700 font-medium">
                         {components.length} components
                       </span>
                     )}
                   </p>
                 </div>
                 {isAssembly && (
-                  <span className="inline-flex items-center border border-cyan-500/30 bg-cyan-500/10 px-2 py-0.5 text-[10px] font-semibold text-cyan-700">
+                  <span className="inline-flex items-center border border-blue-500/30 bg-blue-500/10 px-2 py-0.5 text-[10px] font-semibold text-blue-700">
                     Assembly
                   </span>
                 )}

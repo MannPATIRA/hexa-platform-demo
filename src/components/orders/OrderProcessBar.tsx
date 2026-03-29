@@ -14,22 +14,22 @@ interface PipelineStep {
 
 const STANDARD_PIPELINE: PipelineStep[] = [
   { stage: "rfq_received", label: "RFQ", color: "border-blue-500 bg-blue-500 text-white", activeText: "text-blue-700" },
-  { stage: "quote_sent", label: "Quote", color: "border-violet-500 bg-violet-500 text-white", activeText: "text-violet-700" },
-  { stage: "po_received", label: "PO", color: "border-emerald-500 bg-emerald-500 text-white", activeText: "text-emerald-700" },
-  { stage: "pushed_to_mrp", label: "MRP", color: "border-emerald-500 bg-emerald-500 text-white", activeText: "text-emerald-700" },
+  { stage: "quote_sent", label: "Quote", color: "border-blue-500 bg-blue-500 text-white", activeText: "text-blue-700" },
+  { stage: "po_received", label: "PO", color: "border-blue-500 bg-blue-500 text-white", activeText: "text-blue-700" },
+  { stage: "pushed_to_mrp", label: "MRP", color: "border-blue-500 bg-blue-500 text-white", activeText: "text-blue-700" },
   { stage: "shipped", label: "Shipping", color: "border-blue-500 bg-blue-500 text-white", activeText: "text-blue-700" },
-  { stage: "delivered", label: "Delivered", color: "border-emerald-500 bg-emerald-500 text-white", activeText: "text-emerald-700" },
+  { stage: "delivered", label: "Delivered", color: "border-blue-500 bg-blue-500 text-white", activeText: "text-blue-700" },
 ];
 
 const QUOTE_BUILDER_PIPELINE: PipelineStep[] = [
   { stage: "rfq_received", label: "RFQ", color: "border-blue-500 bg-blue-500 text-white", activeText: "text-blue-700" },
-  { stage: "bom_review", label: "BOM", color: "border-cyan-500 bg-cyan-500 text-white", activeText: "text-cyan-700" },
-  { stage: "inventory_check", label: "Inventory", color: "border-amber-500 bg-amber-500 text-white", activeText: "text-amber-700" },
-  { stage: "quote_draft", label: "Quote", color: "border-violet-500 bg-violet-500 text-white", activeText: "text-violet-700" },
-  { stage: "po_received", label: "PO", color: "border-emerald-500 bg-emerald-500 text-white", activeText: "text-emerald-700" },
-  { stage: "pushed_to_mrp", label: "MRP", color: "border-emerald-500 bg-emerald-500 text-white", activeText: "text-emerald-700" },
+  { stage: "bom_review", label: "BOM", color: "border-blue-500 bg-blue-500 text-white", activeText: "text-blue-700" },
+  { stage: "inventory_check", label: "Inventory", color: "border-blue-500 bg-blue-500 text-white", activeText: "text-blue-700" },
+  { stage: "quote_draft", label: "Quote", color: "border-blue-500 bg-blue-500 text-white", activeText: "text-blue-700" },
+  { stage: "po_received", label: "PO", color: "border-blue-500 bg-blue-500 text-white", activeText: "text-blue-700" },
+  { stage: "pushed_to_mrp", label: "MRP", color: "border-blue-500 bg-blue-500 text-white", activeText: "text-blue-700" },
   { stage: "shipped", label: "Shipping", color: "border-blue-500 bg-blue-500 text-white", activeText: "text-blue-700" },
-  { stage: "delivered", label: "Delivered", color: "border-emerald-500 bg-emerald-500 text-white", activeText: "text-emerald-700" },
+  { stage: "delivered", label: "Delivered", color: "border-blue-500 bg-blue-500 text-white", activeText: "text-blue-700" },
 ];
 
 const STAGE_TO_PIPELINE_INDEX: Record<string, string> = {
@@ -52,9 +52,10 @@ const STAGE_TO_PIPELINE_INDEX: Record<string, string> = {
 
 interface Props {
   order: Order;
+  onStageChange?: (newStage: OrderStage) => void;
 }
 
-export function OrderProcessBar({ order }: Props) {
+export function OrderProcessBar({ order, onStageChange }: Props) {
   const [navigating, setNavigating] = useState<string | null>(null);
 
   const pipeline = order.orderType === "quote_builder" ? QUOTE_BUILDER_PIPELINE : STANDARD_PIPELINE;
@@ -64,16 +65,13 @@ export function OrderProcessBar({ order }: Props) {
   const handleGoBack = useCallback(async (targetStage: OrderStage) => {
     setNavigating(targetStage);
     try {
-      await fetch(`/api/orders/${order.id}/stage`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ stage: targetStage }),
-      });
-      window.location.reload();
-    } catch {
+      if (onStageChange) {
+        await onStageChange(targetStage);
+      }
+    } finally {
       setNavigating(null);
     }
-  }, [order.id]);
+  }, [onStageChange]);
 
   return (
     <div className="flex items-center gap-0 border border-border bg-card px-4 py-3 mb-5 overflow-x-auto">

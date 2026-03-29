@@ -1,11 +1,12 @@
 "use client";
 
-import { Badge } from "@/components/ui/badge";
+import { useState, useCallback } from "react";
 import { OrderWorkspace } from "@/components/OrderWorkspace";
 import type { DemoContext } from "@/components/OrderWorkspace";
 import { OrderProcessBar } from "./OrderProcessBar";
 import { useOrderDemoFlow } from "@/hooks/useOrderDemoFlow";
 import type { Order, OrderStage } from "@/lib/types";
+import { cn } from "@/lib/utils";
 import {
   AlertTriangle,
   Calendar,
@@ -14,84 +15,39 @@ import {
   CreditCard,
 } from "lucide-react";
 
-const DETAIL_STAGE_CONFIG: Record<OrderStage, { label: string; className: string }> = {
-  needs_clarification: {
-    label: "Needs Clarification",
-    className: "border-red-500/30 bg-red-500/10 text-red-700",
-  },
-  clarification_requested: {
-    label: "Clarification Requested",
-    className: "border-amber-500/30 bg-amber-500/10 text-amber-700",
-  },
-  clarification_received: {
-    label: "Clarification Received",
-    className: "border-blue-500/30 bg-blue-500/10 text-blue-700",
-  },
-  rfq_received: {
-    label: "RFQ Received",
-    className: "border-blue-500/30 bg-blue-500/10 text-blue-700",
-  },
-  bom_review: {
-    label: "BOM Review",
-    className: "border-cyan-500/30 bg-cyan-500/10 text-cyan-700",
-  },
-  inventory_check: {
-    label: "Inventory Check",
-    className: "border-amber-500/30 bg-amber-500/10 text-amber-700",
-  },
-  quote_draft: {
-    label: "Quote Draft",
-    className: "border-violet-500/30 bg-violet-500/10 text-violet-700",
-  },
-  quote_sent: {
-    label: "Quote Sent",
-    className: "border-violet-500/30 bg-violet-500/10 text-violet-700",
-  },
-  quote_prepared: {
-    label: "Quote Prepared",
-    className: "border-violet-500/30 bg-violet-500/10 text-violet-700",
-  },
-  po_received: {
-    label: "PO Received",
-    className: "border-emerald-500/30 bg-emerald-500/10 text-emerald-700",
-  },
-  po_validated: {
-    label: "PO Validated",
-    className: "border-emerald-500/30 bg-emerald-500/10 text-emerald-700",
-  },
-  po_mismatch: {
-    label: "PO Mismatch",
-    className: "border-red-500/30 bg-red-500/10 text-red-700",
-  },
-  pushed_to_mrp: {
-    label: "Pushed to MRP",
-    className: "border-emerald-500/30 bg-emerald-500/10 text-emerald-700",
-  },
-  shipped: {
-    label: "Shipped",
-    className: "border-blue-500/30 bg-blue-500/10 text-blue-700",
-  },
-  delivered: {
-    label: "Delivered",
-    className: "border-emerald-500/30 bg-emerald-500/10 text-emerald-700",
-  },
+const DETAIL_STAGE_CONFIG: Record<OrderStage, { label: string; dot: string }> = {
+  needs_clarification:     { label: "Needs Clarification",    dot: "bg-red-500" },
+  clarification_requested: { label: "Clarification Requested", dot: "bg-amber-500" },
+  clarification_received:  { label: "Clarification Received",  dot: "bg-blue-500" },
+  rfq_received:            { label: "RFQ Received",            dot: "bg-blue-500" },
+  bom_review:              { label: "BOM Review",              dot: "bg-violet-500" },
+  inventory_check:         { label: "Inventory Check",         dot: "bg-amber-500" },
+  quote_draft:             { label: "Quote Draft",             dot: "bg-violet-500" },
+  quote_sent:              { label: "Quote Sent",              dot: "bg-violet-500" },
+  quote_prepared:          { label: "Quote Prepared",          dot: "bg-violet-500" },
+  po_received:             { label: "PO Received",             dot: "bg-blue-500" },
+  po_validated:            { label: "PO Validated",            dot: "bg-emerald-500" },
+  po_mismatch:             { label: "PO Mismatch",            dot: "bg-red-500" },
+  pushed_to_mrp:           { label: "Pushed to MRP",          dot: "bg-emerald-500" },
+  shipped:                 { label: "Shipped",                 dot: "bg-emerald-500" },
+  delivered:               { label: "Delivered",               dot: "bg-emerald-500" },
 };
 
-const DEMO_BADGE_MAP: Record<string, { label: string; className: string }> = {
-  clarification_sent:   { label: "RFQ Received",         className: "border-blue-500/30 bg-blue-500/10 text-blue-700" },
-  clarification_reply:  { label: "Awaiting Clarification", className: "border-amber-500/30 bg-amber-500/10 text-amber-700" },
-  quote_sent:           { label: "Quote Draft",            className: "border-violet-500/30 bg-violet-500/10 text-violet-700" },
-  po_received_mismatch: { label: "Quote Sent",             className: "border-violet-500/30 bg-violet-500/10 text-violet-700" },
-  correction_sent:      { label: "PO Mismatch",            className: "border-red-500/30 bg-red-500/10 text-red-700" },
-  po_received_match:    { label: "Awaiting Revised PO",    className: "border-amber-500/30 bg-amber-500/10 text-amber-700" },
-  pushed_to_mrp:        { label: "PO Confirmed",           className: "border-emerald-500/30 bg-emerald-500/10 text-emerald-700" },
-  shipping_in_production:        { label: "In Production",          className: "border-emerald-500/30 bg-emerald-500/10 text-emerald-700" },
-  shipping_ready_for_collection: { label: "In Production",          className: "border-blue-500/30 bg-blue-500/10 text-blue-700" },
-  shipping_pickup:               { label: "Ready for Collection",   className: "border-blue-500/30 bg-blue-500/10 text-blue-700" },
-  shipping_in_transit:           { label: "Pickup Confirmed",       className: "border-cyan-500/30 bg-cyan-500/10 text-cyan-700" },
-  shipping_out_for_delivery:     { label: "In Transit",             className: "border-amber-500/30 bg-amber-500/10 text-amber-700" },
-  shipping_delivered:            { label: "Out for Delivery",       className: "border-orange-500/30 bg-orange-500/10 text-orange-700" },
-  complete:                      { label: "Delivered",              className: "border-emerald-500/30 bg-emerald-500/10 text-emerald-700" },
+const DEMO_BADGE_MAP: Record<string, { label: string; dot: string }> = {
+  clarification_sent:            { label: "RFQ Received",          dot: "bg-blue-500" },
+  clarification_reply:           { label: "Awaiting Clarification", dot: "bg-amber-500" },
+  quote_sent:                    { label: "Quote Draft",           dot: "bg-violet-500" },
+  po_received_mismatch:          { label: "Quote Sent",            dot: "bg-violet-500" },
+  correction_sent:               { label: "PO Mismatch",          dot: "bg-red-500" },
+  po_received_match:             { label: "Awaiting Revised PO",   dot: "bg-amber-500" },
+  pushed_to_mrp:                 { label: "PO Confirmed",         dot: "bg-emerald-500" },
+  shipping_in_production:        { label: "In Production",         dot: "bg-emerald-500" },
+  shipping_ready_for_collection: { label: "In Production",         dot: "bg-blue-500" },
+  shipping_pickup:               { label: "Ready for Collection",  dot: "bg-blue-500" },
+  shipping_in_transit:           { label: "Pickup Confirmed",      dot: "bg-blue-500" },
+  shipping_out_for_delivery:     { label: "In Transit",            dot: "bg-amber-500" },
+  shipping_delivered:            { label: "Out for Delivery",      dot: "bg-amber-500" },
+  complete:                      { label: "Delivered",             dot: "bg-emerald-500" },
 };
 
 interface Props {
@@ -100,13 +56,25 @@ interface Props {
 }
 
 export function OrderDetailClient({ order: initialOrder, leftPanel }: Props) {
-  const demo = useOrderDemoFlow(initialOrder);
-  const order = demo.order;
+  const [currentOrder, setCurrentOrder] = useState<Order>(initialOrder);
+  const [manualStage, setManualStage] = useState(false);
+  const demo = useOrderDemoFlow(currentOrder);
+  const order = manualStage ? currentOrder : (demo.isDemoActive ? demo.order : currentOrder);
+
+  const handleStageChange = useCallback(async (newStage: OrderStage) => {
+    await fetch(`/api/orders/${currentOrder.id}/stage`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ stage: newStage }),
+    });
+    setCurrentOrder((prev) => ({ ...prev, stage: newStage }));
+    setManualStage(true);
+  }, [currentOrder.id]);
 
   const demoBadge = demo.isDemoActive ? DEMO_BADGE_MAP[demo.currentStepId] : undefined;
   const config = demoBadge ?? DETAIL_STAGE_CONFIG[order.stage] ?? {
     label: order.stage ?? "Unknown",
-    className: "border-border bg-muted/40 text-muted-foreground",
+    dot: "bg-muted-foreground",
   };
   const itemsNeedingAction = (order.lineItems ?? []).filter(
     (i) => i.matchStatus !== "confirmed"
@@ -124,9 +92,10 @@ export function OrderDetailClient({ order: initialOrder, leftPanel }: Props) {
             <h1 className="font-display text-[18px] font-medium leading-none text-foreground">
               {order.customer?.company ?? "Unknown Company"}
             </h1>
-            <Badge variant="outline" className={config.className}>
+            <span className="inline-flex items-center gap-2 border border-border bg-muted/40 px-2.5 py-1 text-[12px] font-medium text-foreground/80">
+              <span className={cn("h-1.5 w-1.5 rounded-full shrink-0", config.dot)} />
               {config.label}
-            </Badge>
+            </span>
           </div>
           <div className="mt-2 flex flex-wrap items-center gap-4 text-[12px] text-muted-foreground">
             <span className="font-mono">{order.orderNumber}</span>
@@ -178,7 +147,7 @@ export function OrderDetailClient({ order: initialOrder, leftPanel }: Props) {
         )}
       </div>
 
-      <OrderProcessBar order={order} />
+      <OrderProcessBar order={order} onStageChange={handleStageChange} />
 
       {leftPanel ? (
         <div className="grid grid-cols-1 gap-8 xl:grid-cols-5">

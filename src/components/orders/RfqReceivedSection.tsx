@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useMemo } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { CatalogItem, Order } from "@/lib/types";
 import { LineItemsPanel } from "../LineItemsPanel";
 import { Send, Save, Phone, ExternalLink, Layers } from "lucide-react";
@@ -213,6 +214,7 @@ export function RfqReceivedSection({ order, mode, demoCtx }: Props) {
   const [emailSubject, setEmailSubject] = useState(
     `${order.orderNumber} — Quick clarification needed before we finalise your quote`
   );
+  const router = useRouter();
   const [emailSent, setEmailSent] = useState(false);
   const [clarificationAddedIds, setClarificationAddedIds] = useState<Set<string>>(new Set());
   const [startingBom, setStartingBom] = useState(false);
@@ -392,7 +394,7 @@ export function RfqReceivedSection({ order, mode, demoCtx }: Props) {
                   headers: { "Content-Type": "application/json" },
                   body: JSON.stringify({ stage: "bom_review", orderType: "quote_builder" }),
                 });
-                window.location.reload();
+                router.refresh();
               } catch { setStartingBom(false); }
             }}
             disabled={startingBom}
@@ -403,17 +405,17 @@ export function RfqReceivedSection({ order, mode, demoCtx }: Props) {
           </button>
           <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
             <span className="inline-flex items-center gap-1.5">
-              <span className="flex h-4 w-4 items-center justify-center border border-cyan-500/40 bg-cyan-500/10 text-[9px] font-semibold text-cyan-700">1</span>
+              <span className="flex h-4 w-4 items-center justify-center border border-blue-500/40 bg-blue-500/10 text-[9px] font-semibold text-blue-700">1</span>
               BOM breakdown
             </span>
             <span className="text-border">→</span>
             <span className="inline-flex items-center gap-1.5">
-              <span className="flex h-4 w-4 items-center justify-center border border-amber-500/40 bg-amber-500/10 text-[9px] font-semibold text-amber-700">2</span>
+              <span className="flex h-4 w-4 items-center justify-center border border-blue-500/40 bg-blue-500/10 text-[9px] font-semibold text-blue-700">2</span>
               Inventory check
             </span>
             <span className="text-border">→</span>
             <span className="inline-flex items-center gap-1.5">
-              <span className="flex h-4 w-4 items-center justify-center border border-violet-500/40 bg-violet-500/10 text-[9px] font-semibold text-violet-700">3</span>
+              <span className="flex h-4 w-4 items-center justify-center border border-blue-500/40 bg-blue-500/10 text-[9px] font-semibold text-blue-700">3</span>
               Quote builder
             </span>
           </div>

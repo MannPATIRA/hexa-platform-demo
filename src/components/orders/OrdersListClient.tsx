@@ -2,7 +2,6 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
-import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -24,67 +23,22 @@ const NEEDS_ATTENTION_STAGES: OrderStage[] = [
   "po_mismatch",
 ];
 
-const STAGE_CONFIG: Record<OrderStage, { label: string; className: string }> = {
-  needs_clarification: {
-    label: "Needs Clarification",
-    className: "border-red-500/30 bg-red-500/10 text-red-700",
-  },
-  clarification_requested: {
-    label: "Clarification Requested",
-    className: "border-amber-500/30 bg-amber-500/10 text-amber-700",
-  },
-  clarification_received: {
-    label: "Clarification Received",
-    className: "border-sky-500/30 bg-sky-500/10 text-sky-700",
-  },
-  rfq_received: {
-    label: "RFQ Received",
-    className: "border-blue-500/30 bg-blue-500/10 text-blue-700",
-  },
-  bom_review: {
-    label: "BOM Review",
-    className: "border-cyan-500/30 bg-cyan-500/10 text-cyan-700",
-  },
-  inventory_check: {
-    label: "Inventory Check",
-    className: "border-amber-500/30 bg-amber-500/10 text-amber-700",
-  },
-  quote_draft: {
-    label: "Quote Draft",
-    className: "border-violet-500/30 bg-violet-500/10 text-violet-700",
-  },
-  quote_sent: {
-    label: "Quote Sent",
-    className: "border-violet-500/30 bg-violet-500/10 text-violet-700",
-  },
-  quote_prepared: {
-    label: "Quote Prepared",
-    className: "border-indigo-500/30 bg-indigo-500/10 text-indigo-700",
-  },
-  po_received: {
-    label: "PO Received",
-    className: "border-cyan-500/30 bg-cyan-500/10 text-cyan-700",
-  },
-  po_mismatch: {
-    label: "PO Mismatch",
-    className: "border-rose-500/30 bg-rose-500/10 text-rose-700",
-  },
-  pushed_to_mrp: {
-    label: "Pushed to MRP",
-    className: "border-emerald-500/30 bg-emerald-500/10 text-emerald-700",
-  },
-  po_validated: {
-    label: "PO Validated",
-    className: "border-teal-500/30 bg-teal-500/10 text-teal-700",
-  },
-  shipped: {
-    label: "Shipped",
-    className: "border-orange-500/30 bg-orange-500/10 text-orange-700",
-  },
-  delivered: {
-    label: "Delivered",
-    className: "border-green-500/30 bg-green-500/10 text-green-700",
-  },
+const STAGE_CONFIG: Record<OrderStage, { label: string; dot: string }> = {
+  needs_clarification:     { label: "Needs Clarification",    dot: "bg-red-500" },
+  clarification_requested: { label: "Clarification Requested", dot: "bg-amber-500" },
+  clarification_received:  { label: "Clarification Received",  dot: "bg-blue-500" },
+  rfq_received:            { label: "RFQ Received",            dot: "bg-blue-500" },
+  bom_review:              { label: "BOM Review",              dot: "bg-violet-500" },
+  inventory_check:         { label: "Inventory Check",         dot: "bg-amber-500" },
+  quote_draft:             { label: "Quote Draft",             dot: "bg-violet-500" },
+  quote_sent:              { label: "Quote Sent",              dot: "bg-violet-500" },
+  quote_prepared:          { label: "Quote Prepared",          dot: "bg-violet-500" },
+  po_received:             { label: "PO Received",             dot: "bg-blue-500" },
+  po_mismatch:             { label: "PO Mismatch",            dot: "bg-red-500" },
+  pushed_to_mrp:           { label: "Pushed to MRP",          dot: "bg-emerald-500" },
+  po_validated:            { label: "PO Validated",            dot: "bg-emerald-500" },
+  shipped:                 { label: "Shipped",                 dot: "bg-emerald-500" },
+  delivered:               { label: "Delivered",               dot: "bg-emerald-500" },
 };
 
 const SOURCE_CONFIG: Record<OrderSource, { icon: typeof Mail; label: string }> = {
@@ -107,15 +61,13 @@ function SourceBadge({ source }: { source?: OrderSource }) {
 function StageBadge({ stage }: { stage: OrderStage }) {
   const config = STAGE_CONFIG[stage] ?? {
     label: stage ?? "Unknown",
-    className: "border-border bg-muted/40 text-muted-foreground",
+    dot: "bg-muted-foreground",
   };
   return (
-    <Badge
-      variant="outline"
-      className={`px-3 py-1 text-[11px] font-semibold ${config.className}`}
-    >
+    <span className="inline-flex items-center gap-2 border border-border bg-muted/40 px-2.5 py-1 text-[11px] font-medium text-foreground/80">
+      <span className={cn("h-1.5 w-1.5 rounded-full shrink-0", config.dot)} />
       {config.label}
-    </Badge>
+    </span>
   );
 }
 
@@ -236,22 +188,22 @@ export function OrdersListClient({ orders }: { orders: Order[] }) {
 
       {/* Column headers */}
       <div className="flex items-center border-b border-border px-7 py-2">
-        <div className="flex-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+        <div className="w-56 shrink-0 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
           Order
         </div>
-        <div className="w-24 text-center text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+        <div className="w-20 shrink-0 text-center text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
           Source
         </div>
-        <div className="w-60 text-right text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+        <div className="flex-1 min-w-0 text-left text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
           Subject
         </div>
-        <div className="w-16 text-right text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+        <div className="w-14 shrink-0 text-center text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
           Items
         </div>
-        <div className="w-44 text-right text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+        <div className="w-48 shrink-0 pl-4 text-left text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
           Status
         </div>
-        <div className="w-28 text-right text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+        <div className="w-28 shrink-0 text-right text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
           Date
         </div>
       </div>
@@ -285,28 +237,28 @@ export function OrdersListClient({ orders }: { orders: Order[] }) {
                   className="group block w-full border text-left transition-all duration-200 border-border bg-background/30 cursor-pointer hover:border-primary/60 hover:bg-primary/5"
                 >
                   <div className="flex items-center px-4 py-3.5">
-                    <div className="flex flex-1 items-center gap-3.5">
+                    <div className="flex w-56 shrink-0 items-center gap-3.5">
                       <Avatar className="h-9 w-9 shrink-0 overflow-hidden">
                         <AvatarFallback className="flex size-full min-w-0 items-center justify-center overflow-hidden bg-muted text-[10px] font-semibold leading-none tracking-tight text-muted-foreground">
                           {initials}
                         </AvatarFallback>
                       </Avatar>
-                      <div>
-                        <p className="text-[13px] font-medium leading-tight text-foreground/85">
+                      <div className="min-w-0">
+                        <p className="truncate text-[13px] font-medium leading-tight text-foreground/85">
                           {order.orderNumber}
                         </p>
-                        <p className="mt-0.5 text-[11px] text-muted-foreground">
+                        <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
                           {order.customer?.name ?? "Unknown"} &middot;{" "}
                           {order.customer?.company ?? "Unknown"}
                         </p>
                       </div>
                     </div>
 
-                    <div className="w-24 flex justify-center">
+                    <div className="w-20 shrink-0 flex justify-center">
                       <SourceBadge source={order.source} />
                     </div>
 
-                    <div className="w-60 text-right">
+                    <div className="flex-1 min-w-0 text-left">
                       <p className="truncate text-[12px] text-muted-foreground">
                         {order.emailSubject}
                       </p>
@@ -316,15 +268,15 @@ export function OrdersListClient({ orders }: { orders: Order[] }) {
                       </p>
                     </div>
 
-                    <div className="w-16 text-right">
+                    <div className="w-14 shrink-0 text-center">
                       <p className="text-[12px] text-foreground/80">{order.totalItems}</p>
                     </div>
 
-                    <div className="w-44 flex justify-end">
+                    <div className="w-48 shrink-0 pl-4 flex justify-start">
                       <StageBadge stage={order.stage} />
                     </div>
 
-                    <div className="w-28 text-right">
+                    <div className="w-28 shrink-0 text-right">
                       <p className="text-[12px] text-muted-foreground">
                         {new Date(order.createdAt).toLocaleDateString("en-US", {
                           month: "short",
