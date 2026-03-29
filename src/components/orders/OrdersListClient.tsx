@@ -41,6 +41,18 @@ const STAGE_CONFIG: Record<OrderStage, { label: string; className: string }> = {
     label: "RFQ Received",
     className: "border-blue-500/30 bg-blue-500/10 text-blue-700",
   },
+  bom_review: {
+    label: "BOM Review",
+    className: "border-cyan-500/30 bg-cyan-500/10 text-cyan-700",
+  },
+  inventory_check: {
+    label: "Inventory Check",
+    className: "border-amber-500/30 bg-amber-500/10 text-amber-700",
+  },
+  quote_draft: {
+    label: "Quote Draft",
+    className: "border-violet-500/30 bg-violet-500/10 text-violet-700",
+  },
   quote_sent: {
     label: "Quote Sent",
     className: "border-violet-500/30 bg-violet-500/10 text-violet-700",

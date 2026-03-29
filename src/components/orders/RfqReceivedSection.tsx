@@ -4,7 +4,7 @@ import { useState, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { CatalogItem, Order } from "@/lib/types";
 import { LineItemsPanel } from "../LineItemsPanel";
-import { Send, Save, Phone, ExternalLink } from "lucide-react";
+import { Send, Save, Phone, ExternalLink, Layers } from "lucide-react";
 import type { DemoContext } from "../OrderWorkspace";
 
 interface Props {
@@ -215,6 +215,7 @@ export function RfqReceivedSection({ order, mode, demoCtx }: Props) {
   );
   const [emailSent, setEmailSent] = useState(false);
   const [clarificationAddedIds, setClarificationAddedIds] = useState<Set<string>>(new Set());
+  const [startingBom, setStartingBom] = useState(false);
 
   const handleAddClarification = useCallback(
     (lineItemId: string, question: string) => {
@@ -375,6 +376,46 @@ export function RfqReceivedSection({ order, mode, demoCtx }: Props) {
                 Save Draft
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {allResolved && (
+        <div className="border-t border-border pt-4 space-y-3">
+          <button
+            type="button"
+            onClick={async () => {
+              setStartingBom(true);
+              try {
+                await fetch(`/api/orders/${order.id}/stage`, {
+                  method: "PATCH",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ stage: "bom_review", orderType: "quote_builder" }),
+                });
+                window.location.reload();
+              } catch { setStartingBom(false); }
+            }}
+            disabled={startingBom}
+            className="inline-flex items-center gap-2 bg-foreground px-4 py-2.5 text-[12px] font-medium text-background transition-opacity hover:opacity-90 disabled:opacity-60"
+          >
+            <Layers className="h-3.5 w-3.5" />
+            {startingBom ? "Loading..." : "Build Detailed Quote"}
+          </button>
+          <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
+            <span className="inline-flex items-center gap-1.5">
+              <span className="flex h-4 w-4 items-center justify-center border border-cyan-500/40 bg-cyan-500/10 text-[9px] font-semibold text-cyan-700">1</span>
+              BOM breakdown
+            </span>
+            <span className="text-border">→</span>
+            <span className="inline-flex items-center gap-1.5">
+              <span className="flex h-4 w-4 items-center justify-center border border-amber-500/40 bg-amber-500/10 text-[9px] font-semibold text-amber-700">2</span>
+              Inventory check
+            </span>
+            <span className="text-border">→</span>
+            <span className="inline-flex items-center gap-1.5">
+              <span className="flex h-4 w-4 items-center justify-center border border-violet-500/40 bg-violet-500/10 text-[9px] font-semibold text-violet-700">3</span>
+              Quote builder
+            </span>
           </div>
         </div>
       )}

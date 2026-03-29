@@ -1,10 +1,14 @@
 export type MatchStatus = "confirmed" | "partial" | "conflict" | "unmatched";
 export type OrderSource = "email" | "ecommerce" | "phone";
+export type OrderType = "standard" | "quote_builder";
 export type OrderStage =
   | "needs_clarification"
   | "clarification_requested"
   | "clarification_received"
   | "rfq_received"
+  | "bom_review"
+  | "inventory_check"
+  | "quote_draft"
   | "quote_sent"
   | "quote_prepared"
   | "po_received"
@@ -68,6 +72,37 @@ export type DemoOrderScenario =
 export type ComparisonField = "price" | "quantity" | "dueDate" | "drawingRev";
 export type ErpSyncState = "queued" | "sent" | "acknowledged" | "blocked";
 
+export type InventoryStockStatus = "in_stock" | "low" | "out_of_stock" | "custom";
+
+export interface BomComponent {
+  id: string;
+  catalogSku: string | null;
+  name: string;
+  quantity: number;
+  uom: string;
+  unitCost: number | null;
+  isCustom: boolean;
+}
+
+export interface InventoryStatus {
+  catalogSku: string;
+  componentName: string;
+  required: number;
+  inStock: number;
+  shortfall: number;
+  status: InventoryStockStatus;
+  leadTimeDays?: number;
+  procurementItemId?: string;
+}
+
+export interface DrawingRef {
+  id: string;
+  fileName: string;
+  revision: string;
+  attachmentId: string;
+  linkedLineItemIds: string[];
+}
+
 export interface CatalogItem {
   catalogSku: string;
   catalogName: string;
@@ -90,6 +125,7 @@ export interface LineItem {
   confidence: number;
   matchedCatalogItems: CatalogItem[];
   issues: string[];
+  bomComponents?: BomComponent[];
 }
 
 export interface Attachment {
@@ -184,6 +220,9 @@ export interface Order {
   lineItems: LineItem[];
   emailSubject: string;
   totalItems: number;
+  orderType?: OrderType;
+  drawings?: DrawingRef[];
+  inventoryStatus?: InventoryStatus[];
   poNumber?: string | null;
   dueDate?: string | null;
   shipTo?: string | null;

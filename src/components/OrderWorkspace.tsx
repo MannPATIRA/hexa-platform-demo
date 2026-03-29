@@ -4,6 +4,9 @@ import { Order, ShipmentStatus } from "@/lib/types";
 import { TimelineSection } from "./orders/TimelineSection";
 import { RfqReceivedSection } from "./orders/RfqReceivedSection";
 import { ClarificationSection } from "./orders/ClarificationSection";
+import { BomReviewSection } from "./orders/BomReviewSection";
+import { InventoryCheckSection } from "./orders/InventoryCheckSection";
+import { QuoteDraftSection } from "./orders/QuoteDraftSection";
 import { QuoteSentSection } from "./orders/QuoteSentSection";
 import { PoReceivedSection } from "./orders/PoReceivedSection";
 import { MrpPushSection } from "./orders/MrpPushSection";
@@ -16,6 +19,9 @@ type SectionKey =
   | "mrp"
   | "po"
   | "quote"
+  | "quote_draft"
+  | "inventory_check"
+  | "bom_review"
   | "clarification"
   | "rfq";
 
@@ -29,6 +35,20 @@ interface SectionDef {
   key: SectionKey;
   shouldRender: (order: Order) => boolean;
   isActive: (order: Order) => boolean;
+}
+
+function isQuoteBuilder(o: Order): boolean {
+  return o.orderType === "quote_builder";
+}
+
+const BOM_STAGES = new Set(["bom_review", "inventory_check", "quote_draft"]);
+
+function hasPassedBomStage(o: Order, stage: string): boolean {
+  const pipeline = ["bom_review", "inventory_check", "quote_draft", "quote_sent"];
+  const currentIdx = pipeline.indexOf(o.stage);
+  const targetIdx = pipeline.indexOf(stage);
+  if (currentIdx === -1 || targetIdx === -1) return false;
+  return currentIdx > targetIdx;
 }
 
 function hasCompletedShipmentLifecycle(order: Order): boolean {
@@ -93,6 +113,36 @@ const SECTION_DEFS: SectionDef[] = [
     isActive: (o) => o.stage === "quote_sent",
   },
   {
+    key: "quote_draft",
+    shouldRender: (o) =>
+      isQuoteBuilder(o) && (
+        o.stage === "quote_draft" ||
+        hasPassedBomStage(o, "quote_draft")
+      ),
+    isActive: (o) => o.stage === "quote_draft",
+  },
+  {
+    key: "inventory_check",
+    shouldRender: (o) =>
+      isQuoteBuilder(o) && (
+        o.stage === "inventory_check" ||
+        o.stage === "quote_draft" ||
+        hasPassedBomStage(o, "inventory_check")
+      ),
+    isActive: (o) => o.stage === "inventory_check",
+  },
+  {
+    key: "bom_review",
+    shouldRender: (o) =>
+      isQuoteBuilder(o) && (
+        o.stage === "bom_review" ||
+        o.stage === "inventory_check" ||
+        o.stage === "quote_draft" ||
+        hasPassedBomStage(o, "bom_review")
+      ),
+    isActive: (o) => o.stage === "bom_review",
+  },
+  {
     key: "clarification",
     shouldRender: (o) =>
       (o.demoFlow?.clarifications?.length ?? 0) > 0 ||
@@ -124,6 +174,9 @@ function getSectionTitle(key: SectionKey, order: Order): string {
       const qs = order.demoFlow?.quoteSummary;
       return qs && !qs.sentAt ? "Quote Draft" : "Quote Sent";
     }
+    case "quote_draft": return "Quote Builder";
+    case "inventory_check": return "Inventory & Procurement";
+    case "bom_review": return "BOM & Drawings";
     case "clarification": return "Clarification";
     case "rfq": return "RFQ Received";
     default: return "";
@@ -142,6 +195,10 @@ function getSectionDate(key: SectionKey, order: Order): string | undefined {
       return order.demoFlow?.poConfirmation?.receivedAt;
     case "quote":
       return order.demoFlow?.quoteSummary?.sentAt;
+    case "quote_draft":
+    case "inventory_check":
+    case "bom_review":
+      return order.createdAt;
     case "clarification": {
       const clarifications = order.demoFlow?.clarifications;
       if (!clarifications?.length) return undefined;
@@ -199,6 +256,26 @@ function getSectionSummary(key: SectionKey, order: Order): string {
       const qs = flow?.quoteSummary;
       if (!qs) return `Quote prepared for ${order.customer.company}`;
       return `${qs.quoteNumber} — ${qs.items.length} items, $${fmt(qs.subtotal)} — Sent to ${qs.sentTo}`;
+    }
+    case "quote_draft": {
+      const inv = order.inventoryStatus ?? [];
+      const inStock = inv.filter((i) => i.status === "in_stock").length;
+      const total = inv.length;
+      return `Quote built from ${order.lineItems.length} items — ${inStock} of ${total} components in stock`;
+    }
+    case "inventory_check": {
+      const inv = order.inventoryStatus ?? [];
+      const inStock = inv.filter((i) => i.status === "in_stock").length;
+      const low = inv.filter((i) => i.status === "low").length;
+      const out = inv.filter((i) => i.status === "out_of_stock").length;
+      return `${inStock} in stock, ${low} low, ${out} out of stock`;
+    }
+    case "bom_review": {
+      const totalComponents = order.lineItems.reduce(
+        (sum, li) => sum + (li.bomComponents?.length ?? 0), 0
+      );
+      const drawings = order.drawings?.length ?? 0;
+      return `${order.lineItems.length} items → ${totalComponents} components${drawings > 0 ? `, ${drawings} drawings linked` : ""}`;
     }
     case "clarification": {
       const cl = flow?.clarifications;
@@ -284,6 +361,12 @@ function renderSection(key: SectionKey, order: Order, mode: "active" | "complete
       return <PoReceivedSection order={order} mode={mode} demoCtx={demoCtx} />;
     case "quote":
       return <QuoteSentSection order={order} mode={mode} demoCtx={demoCtx} />;
+    case "quote_draft":
+      return <QuoteDraftSection order={order} mode={mode} />;
+    case "inventory_check":
+      return <InventoryCheckSection order={order} mode={mode} />;
+    case "bom_review":
+      return <BomReviewSection order={order} mode={mode} />;
     case "clarification":
       return <ClarificationSection order={order} mode={mode} />;
     case "rfq":
