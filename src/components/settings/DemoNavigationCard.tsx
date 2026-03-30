@@ -2,21 +2,47 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Store, Mail, PhoneCall, Send, Loader2, ExternalLink } from "lucide-react";
+import {
+  Store,
+  Mail,
+  PhoneCall,
+  Send,
+  Loader2,
+  ExternalLink,
+  Compass,
+  CheckCircle2,
+  AlertCircle,
+} from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
 const demoSections = [
-  { name: "Ecommerce", href: "/storefront", icon: Store },
-  { name: "Outlook", href: "https://outlook.office.com", icon: Mail },
-  { name: "Phone call demo", href: "/demo", icon: PhoneCall },
+  {
+    name: "Ecommerce",
+    href: "/storefront",
+    icon: Store,
+    description: "Browse storefront",
+  },
+  {
+    name: "Outlook",
+    href: "https://outlook.office.com",
+    icon: Mail,
+    description: "Email integration",
+  },
+  {
+    name: "Phone call demo",
+    href: "/demo",
+    icon: PhoneCall,
+    description: "Voice AI demo",
+  },
 ] as const;
 
 export default function DemoNavigationCard() {
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(
-    null
-  );
+  const [message, setMessage] = useState<{
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
 
   const handleSendEmails = async () => {
     setLoading(true);
@@ -53,56 +79,78 @@ export default function DemoNavigationCard() {
   return (
     <Card>
       <CardHeader className="border-b">
-        <CardTitle className="text-[13px] font-medium">Demo Navigation</CardTitle>
+        <div className="flex items-center gap-2">
+          <Compass className="h-4 w-4 text-muted-foreground" />
+          <CardTitle className="text-[13px] font-medium">
+            Demo Navigation
+          </CardTitle>
+        </div>
       </CardHeader>
-      <CardContent className="pt-4">
+      <CardContent>
         <div className="space-y-4">
-          <div className="flex flex-wrap gap-2">
-            {demoSections.map(({ name, href, icon: Icon }) => (
+          <div className="grid gap-3 sm:grid-cols-3">
+            {demoSections.map(({ name, href, icon: Icon, description }) => (
               <Link
                 key={name}
                 href={href}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 rounded-md border border-border bg-muted/50 px-3 py-2 text-[13px] font-medium text-foreground hover:bg-muted transition-colors"
+                className="group flex items-center gap-3 rounded-lg border border-border bg-muted/20 px-4 py-3 transition-all hover:border-primary/40 hover:bg-primary/5"
               >
-                <Icon className="h-3.5 w-3.5" />
-                {name}
-                <ExternalLink className="h-3 w-3 text-muted-foreground" />
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground transition-colors group-hover:bg-primary/10 group-hover:text-primary">
+                  <Icon className="h-4 w-4" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[13px] font-medium text-foreground group-hover:text-primary transition-colors">
+                    {name}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground">
+                    {description}
+                  </p>
+                </div>
+                <ExternalLink className="h-3.5 w-3.5 text-muted-foreground/40 shrink-0 group-hover:text-primary/60 transition-colors" />
               </Link>
             ))}
           </div>
 
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
+          <div className="flex items-center gap-3 rounded-lg border border-dashed border-border bg-muted/10 px-4 py-3">
             <Button
               size="sm"
               variant="outline"
               onClick={handleSendEmails}
               disabled={loading}
-              className="w-fit"
+              className="shrink-0"
             >
               {loading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
               ) : (
-                <Send className="h-4 w-4" />
+                <Send className="h-3.5 w-3.5" />
               )}
               {loading ? "Sending…" : "Send demo emails"}
             </Button>
+
             {message && (
-              <p
-                className={`text-[13px] ${
-                  message.type === "success" ? "text-primary" : "text-destructive"
+              <div
+                className={`flex items-center gap-1.5 text-[12px] ${
+                  message.type === "success"
+                    ? "text-emerald-600"
+                    : "text-destructive"
                 }`}
               >
+                {message.type === "success" ? (
+                  <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+                ) : (
+                  <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                )}
                 {message.text}
-              </p>
+              </div>
             )}
           </div>
 
           {message?.type === "error" && (
-            <p className="text-xs text-muted-foreground">
-              Add SMTP_HOST, SMTP_PORT, SMTP_USER, and SMTP_PASS to .env or .env.local.
-              Emails are sent to supplier-hexa@outlook.com.
+            <p className="text-[11px] text-muted-foreground leading-relaxed pl-1">
+              Add SMTP_HOST, SMTP_PORT, SMTP_USER, and SMTP_PASS to .env or
+              .env.local. Emails are sent to supplier-hexa@outlook.com.
             </p>
           )}
         </div>

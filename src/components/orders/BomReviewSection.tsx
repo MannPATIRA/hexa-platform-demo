@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useMemo, useCallback } from "react";
-import { useRouter } from "next/navigation";
 import { Order, BomComponent } from "@/lib/types";
+import type { StageChangeHandler } from "@/components/OrderWorkspace";
 import { explodeBom } from "@/lib/bom-data";
 import { ChevronDown, Plus, Package, FileText, ArrowRight, Check, X } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -10,16 +10,16 @@ import { cn } from "@/lib/utils";
 interface Props {
   order: Order;
   mode: "active" | "completed";
+  onStageChange?: StageChangeHandler;
 }
 
-export function BomReviewSection({ order, mode }: Props) {
+export function BomReviewSection({ order, mode, onStageChange }: Props) {
   const explodedItems = useMemo(() => explodeBom(order.lineItems), [order.lineItems]);
 
   const [lineItems, setLineItems] = useState(explodedItems);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(
     () => new Set(explodedItems.filter((li) => (li.bomComponents?.length ?? 0) > 1).map((li) => li.id))
   );
-  const router = useRouter();
   const [addingToId, setAddingToId] = useState<string | null>(null);
   const [newPartName, setNewPartName] = useState("");
   const [newPartQty, setNewPartQty] = useState(1);
@@ -71,23 +71,16 @@ export function BomReviewSection({ order, mode }: Props) {
   const handleContinue = useCallback(async () => {
     setAdvancing(true);
     try {
-      await fetch(`/api/orders/${order.id}/stage`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          stage: "inventory_check",
+      if (onStageChange) {
+        await onStageChange("inventory_check", {
           orderType: "quote_builder",
-          lineItems: lineItems.map((li) => ({
-            ...li,
-            bomComponents: li.bomComponents,
-          })),
-        }),
-      });
-      router.refresh();
+          lineItems: lineItems.map((li) => ({ ...li, bomComponents: li.bomComponents })),
+        });
+      }
     } catch {
       setAdvancing(false);
     }
-  }, [order.id, lineItems, router]);
+  }, [lineItems, onStageChange]);
 
   if (mode === "completed") {
     return (

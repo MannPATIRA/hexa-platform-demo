@@ -1,15 +1,24 @@
 "use client";
 
 import { useState, useMemo, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Order, InventoryStatus } from "@/lib/types";
+import type { StageChangeHandler } from "@/components/OrderWorkspace";
 import { checkInventory } from "@/lib/bom-data";
-import { ArrowRight, Check, Package, AlertTriangle } from "lucide-react";
+import { ArrowRight, Check, Package, AlertTriangle, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+const SKU_TO_PROCUREMENT: Record<string, { id: string; label: string }> = {
+  "HB-M10-40": { id: "pi-016", label: "PI-016" },
+  "GK-FL-3": { id: "pi-017", label: "PI-017" },
+  "SF-3-150": { id: "pi-001", label: "PI-001" },
+  "RS-HD-10": { id: "pi-003", label: "PI-003" },
+};
 
 interface Props {
   order: Order;
   mode: "active" | "completed";
+  onStageChange?: StageChangeHandler;
 }
 
 const STATUS_DOT: Record<InventoryStatus["status"], string> = {
@@ -26,7 +35,7 @@ const STATUS_LABEL: Record<InventoryStatus["status"], string> = {
   custom: "Custom",
 };
 
-export function InventoryCheckSection({ order, mode }: Props) {
+export function InventoryCheckSection({ order, mode, onStageChange }: Props) {
   const inventory = useMemo(() => {
     if (order.inventoryStatus && order.inventoryStatus.length > 0) {
       return order.inventoryStatus;
@@ -34,7 +43,6 @@ export function InventoryCheckSection({ order, mode }: Props) {
     return checkInventory(order.lineItems);
   }, [order.inventoryStatus, order.lineItems]);
 
-  const router = useRouter();
   const [sentToProcurement, setSentToProcurement] = useState<Set<string>>(new Set());
   const [advancing, setAdvancing] = useState(false);
 
@@ -58,19 +66,13 @@ export function InventoryCheckSection({ order, mode }: Props) {
   const handleContinue = useCallback(async () => {
     setAdvancing(true);
     try {
-      await fetch(`/api/orders/${order.id}/stage`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          stage: "quote_draft",
-          inventoryStatus: inventory,
-        }),
-      });
-      router.refresh();
+      if (onStageChange) {
+        await onStageChange("quote_draft", { inventoryStatus: inventory });
+      }
     } catch {
       setAdvancing(false);
     }
-  }, [order.id, inventory, router]);
+  }, [inventory, onStageChange]);
 
   if (mode === "completed") {
     return (
@@ -189,10 +191,16 @@ export function InventoryCheckSection({ order, mode }: Props) {
                     </p>
                   </div>
                   {isSent ? (
-                    <span className="inline-flex items-center gap-1 border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-medium text-emerald-700">
+                    <Link
+                      href="/procurement"
+                      className="inline-flex items-center gap-1.5 border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-medium text-emerald-700 hover:bg-emerald-500/20 transition-colors"
+                    >
                       <Check className="h-3 w-3" />
-                      Sent to Procurement
-                    </span>
+                      {SKU_TO_PROCUREMENT[item.catalogSku]
+                        ? `Sent — ${SKU_TO_PROCUREMENT[item.catalogSku].label}`
+                        : "Flagged"}
+                      <ExternalLink className="h-3 w-3" />
+                    </Link>
                   ) : (
                     <button
                       type="button"

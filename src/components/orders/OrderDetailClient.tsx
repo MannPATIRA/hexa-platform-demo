@@ -58,17 +58,20 @@ interface Props {
 export function OrderDetailClient({ order: initialOrder, leftPanel }: Props) {
   const [currentOrder, setCurrentOrder] = useState<Order>(initialOrder);
   const [manualStage, setManualStage] = useState(false);
+  const [workspaceKey, setWorkspaceKey] = useState(0);
   const demo = useOrderDemoFlow(currentOrder);
   const order = manualStage ? currentOrder : (demo.isDemoActive ? demo.order : currentOrder);
 
-  const handleStageChange = useCallback(async (newStage: OrderStage) => {
+  const handleStageChange = useCallback(async (newStage: OrderStage, data?: Partial<Order>) => {
+    const payload = { stage: newStage, ...data };
     await fetch(`/api/orders/${currentOrder.id}/stage`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ stage: newStage }),
+      body: JSON.stringify(payload),
     });
-    setCurrentOrder((prev) => ({ ...prev, stage: newStage }));
+    setCurrentOrder((prev) => ({ ...prev, ...payload, stage: newStage }));
     setManualStage(true);
+    setWorkspaceKey((k) => k + 1);
   }, [currentOrder.id]);
 
   const demoBadge = demo.isDemoActive ? DEMO_BADGE_MAP[demo.currentStepId] : undefined;
@@ -155,12 +158,12 @@ export function OrderDetailClient({ order: initialOrder, leftPanel }: Props) {
             {leftPanel}
           </div>
           <div className="xl:col-span-3">
-            <OrderWorkspace order={order} demoCtx={demoCtx} />
+            <OrderWorkspace key={workspaceKey} order={order} demoCtx={demoCtx} onStageChange={handleStageChange} />
           </div>
         </div>
       ) : (
         <div>
-          <OrderWorkspace order={order} demoCtx={demoCtx} />
+          <OrderWorkspace key={workspaceKey} order={order} demoCtx={demoCtx} onStageChange={handleStageChange} />
         </div>
       )}
     </>

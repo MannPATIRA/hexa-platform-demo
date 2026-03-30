@@ -11,7 +11,6 @@ import {
   ListFilter,
   ArrowUpDown,
 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -43,13 +42,13 @@ const statusLabels: Record<ProcurementStatus, string> = {
   delivered: "Delivered",
 };
 
-const statusBadgeClass: Record<ProcurementStatus, string> = {
-  flagged: "border-amber-500/30 bg-amber-500/10 text-amber-700",
-  rfq_sent: "border-blue-500/30 bg-blue-500/10 text-blue-700",
-  quotes_received: "border-violet-500/30 bg-violet-500/10 text-violet-700",
-  po_sent: "border-indigo-500/30 bg-indigo-500/10 text-indigo-700",
-  shipped: "border-blue-500/30 bg-blue-500/10 text-blue-700",
-  delivered: "border-emerald-500/30 bg-emerald-500/10 text-emerald-700",
+const statusDotColor: Record<ProcurementStatus, string> = {
+  flagged: "bg-amber-500",
+  rfq_sent: "bg-blue-500",
+  quotes_received: "bg-violet-500",
+  po_sent: "bg-blue-500",
+  shipped: "bg-blue-500",
+  delivered: "bg-emerald-500",
 };
 
 const priorityLabels: Record<ProcurementPriority, string> = {
@@ -59,11 +58,11 @@ const priorityLabels: Record<ProcurementPriority, string> = {
   low: "Low",
 };
 
-const priorityBadgeClass: Record<ProcurementPriority, string> = {
-  critical: "border-red-500/30 bg-red-500/10 text-red-700",
-  high: "border-amber-500/30 bg-amber-500/10 text-amber-700",
-  medium: "border-border bg-muted/50 text-foreground/70",
-  low: "border-border bg-muted/50 text-muted-foreground",
+const priorityDotColor: Record<ProcurementPriority, string> = {
+  critical: "bg-red-500",
+  high: "bg-amber-500",
+  medium: "bg-muted-foreground",
+  low: "bg-muted-foreground",
 };
 
 const NEEDS_ATTENTION_STATUSES: ProcurementStatus[] = ["flagged", "quotes_received"];
@@ -258,13 +257,13 @@ export default function ProcurementQueue() {
         <div className="w-40 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
           Source
         </div>
-        <div className="w-28 text-center text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+        <div className="w-28 pl-1 text-left text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
           Priority
         </div>
         <div className="w-28 text-center text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
           Days Left
         </div>
-        <div className="w-32 text-center text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+        <div className="w-32 pl-1 text-left text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
           Status
         </div>
         <div className="w-32 text-right text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
@@ -320,16 +319,11 @@ export default function ProcurementQueue() {
                       </p>
                     </div>
 
-                    <div className="w-28 flex justify-center">
-                      <Badge
-                        variant="outline"
-                        className={cn(
-                          "px-2.5 py-0.5 text-[11px] font-semibold",
-                          priorityBadgeClass[item.priority]
-                        )}
-                      >
+                    <div className="w-28 flex justify-start pl-1">
+                      <span className="inline-flex items-center gap-2 text-[12px] text-muted-foreground">
+                        <span className={cn("h-1.5 w-1.5 rounded-full shrink-0", priorityDotColor[item.priority])} />
                         {priorityLabels[item.priority]}
-                      </Badge>
+                      </span>
                     </div>
 
                     <div className="w-28 text-center">
@@ -351,16 +345,11 @@ export default function ProcurementQueue() {
                       )}
                     </div>
 
-                    <div className="w-32 flex justify-center">
-                      <Badge
-                        variant="outline"
-                        className={cn(
-                          "px-3 py-1 text-[11px] font-semibold",
-                          statusBadgeClass[item.status]
-                        )}
-                      >
+                    <div className="w-32 flex justify-start pl-1">
+                      <span className="inline-flex items-center gap-2 text-[12px] text-muted-foreground">
+                        <span className={cn("h-1.5 w-1.5 rounded-full shrink-0", statusDotColor[item.status])} />
                         {statusLabels[item.status]}
-                      </Badge>
+                      </span>
                     </div>
 
                     <div className="w-32 text-right">

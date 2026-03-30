@@ -49,7 +49,7 @@ export function LineItemCard({
     <div
       className={`border p-4 transition-colors ${
         isConfirmed
-          ? "border-border/60 bg-muted/20 opacity-80"
+          ? "border-border/40 bg-muted/10"
           : "border-border bg-background/30 hover:border-primary/60 hover:bg-primary/5"
       }`}
     >

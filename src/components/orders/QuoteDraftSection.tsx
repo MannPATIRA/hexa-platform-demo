@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useMemo, useCallback } from "react";
-import { useRouter } from "next/navigation";
 import { Order, InventoryStatus } from "@/lib/types";
+import type { StageChangeHandler } from "@/components/OrderWorkspace";
 import { checkInventory } from "@/lib/bom-data";
 import { Check, Send, Download, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 interface Props {
   order: Order;
   mode: "active" | "completed";
+  onStageChange?: StageChangeHandler;
 }
 
 interface QuoteRow {
@@ -25,7 +26,7 @@ interface QuoteRow {
 const fmt = (n: number) =>
   n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-export function QuoteDraftSection({ order, mode }: Props) {
+export function QuoteDraftSection({ order, mode, onStageChange }: Props) {
   const inventory = useMemo(() => {
     if (order.inventoryStatus && order.inventoryStatus.length > 0) return order.inventoryStatus;
     return checkInventory(order.lineItems);
@@ -55,7 +56,6 @@ export function QuoteDraftSection({ order, mode }: Props) {
     })
   );
 
-  const router = useRouter();
   const [markupPct, setMarkupPct] = useState(15);
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [sending, setSending] = useState(false);
@@ -95,34 +95,29 @@ export function QuoteDraftSection({ order, mode }: Props) {
   const handleSendQuote = useCallback(async () => {
     setSending(true);
     try {
-      await fetch(`/api/orders/${order.id}/stage`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          stage: "quote_sent",
-          demoFlow: {
-            ...order.demoFlow,
-            quoteSummary: {
-              quoteNumber,
-              items: rows.map((r) => ({
-                sku: r.sku,
-                name: r.name,
-                qty: r.qty,
-                unitPrice: r.unitPrice,
-              })),
-              subtotal: total,
-              sentAt: new Date().toISOString(),
-              sentTo: order.customer.email,
-            },
-          },
-        }),
-      });
+      const quoteSummary = {
+        quoteNumber,
+        items: rows.map((r) => ({
+          sku: r.sku,
+          name: r.name,
+          qty: r.qty,
+          unitPrice: r.unitPrice,
+        })),
+        subtotal: total,
+        sentAt: new Date().toISOString(),
+        sentTo: order.customer.email,
+      };
       setSent(true);
-      setTimeout(() => router.refresh(), 800);
+      if (onStageChange) {
+        const demoFlow = order.demoFlow
+          ? { ...order.demoFlow, quoteSummary }
+          : { scenario: "dynamic" as const, stage: "rfq_received" as const, quoteSummary };
+        setTimeout(() => onStageChange("quote_sent", { demoFlow }), 800);
+      }
     } catch {
       setSending(false);
     }
-  }, [order, quoteNumber, rows, total, router]);
+  }, [order, quoteNumber, rows, total, onStageChange]);
 
   if (mode === "completed") {
     return (
@@ -276,17 +271,40 @@ export function QuoteDraftSection({ order, mode }: Props) {
         <h4 className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
           Availability & Lead Time
         </h4>
+
+        {counts.low === 0 && counts.custom === 0 ? (
+          <div className="flex items-center gap-2.5 border border-emerald-500/30 bg-emerald-500/5 px-4 py-3">
+            <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 shrink-0" />
+            <span className="text-[13px] font-medium text-emerald-700">
+              All components in stock — ready to ship
+            </span>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2.5 border border-amber-500/30 bg-amber-500/5 px-4 py-3">
+            <span className="h-2.5 w-2.5 rounded-full bg-amber-500 shrink-0" />
+            <div>
+              <p className="text-[13px] font-medium text-amber-800">
+                Estimated fulfillment: {maxLeadTime > 0 ? `${maxLeadTime} business days` : "TBD"}
+              </p>
+              <p className="text-[11px] text-amber-700/80 mt-0.5">
+                Waiting on {counts.low} component{counts.low !== 1 ? "s" : ""} from procurement
+                {counts.custom > 0 && ` + ${counts.custom} custom part${counts.custom !== 1 ? "s" : ""}`}
+              </p>
+            </div>
+          </div>
+        )}
+
         <div className="space-y-1.5 text-[12px]">
           {counts.inStock > 0 && (
             <div className="flex items-center gap-2">
               <span className="h-2 w-2 rounded-full bg-emerald-500 shrink-0" />
-              <span className="text-foreground/85">{counts.inStock} components in stock — ready to ship</span>
+              <span className="text-foreground/85">{counts.inStock} components in stock</span>
             </div>
           )}
           {counts.low > 0 && (
             <div className="flex items-center gap-2">
               <span className="h-2 w-2 rounded-full bg-amber-500 shrink-0" />
-              <span className="text-amber-700">{counts.low} components need ordering — est. {maxLeadTime} days</span>
+              <span className="text-amber-700">{counts.low} need ordering — est. {maxLeadTime} days</span>
             </div>
           )}
           {counts.custom > 0 && (
@@ -297,11 +315,6 @@ export function QuoteDraftSection({ order, mode }: Props) {
           )}
         </div>
         <div className="mt-3 flex flex-wrap items-center gap-x-6 gap-y-1 border-t border-border pt-3 text-[12px] text-muted-foreground">
-          {maxLeadTime > 0 && (
-            <span>
-              Estimated lead time: <span className="font-medium text-foreground/85">{maxLeadTime} business days</span>
-            </span>
-          )}
           <span>
             Quote valid until: <span className="font-medium text-foreground/85">
               {new Date(Date.now() + 14 * 86400000).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}

@@ -3,7 +3,6 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { X, Package, Wrench, Calendar, Mail, Clock, Star, FileText, ArrowLeftRight, FileDown, Table2, Loader2, Check } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import type {
@@ -58,43 +57,43 @@ const stageDisplayNames: Record<ProcurementStatus, string> = {
   delivered: "Delivery Received",
 };
 
-const statusBadgeClass: Record<ProcurementStatus, string> = {
-  flagged: "border-amber-500/30 bg-amber-500/10 text-amber-700",
-  rfq_sent: "border-blue-500/30 bg-blue-500/10 text-blue-700",
-  quotes_received: "border-violet-500/30 bg-violet-500/10 text-violet-700",
-  po_sent: "border-indigo-500/30 bg-indigo-500/10 text-indigo-700",
-  shipped: "border-blue-500/30 bg-blue-500/10 text-blue-700",
-  delivered: "border-emerald-500/30 bg-emerald-500/10 text-emerald-700",
+const statusDotColor: Record<ProcurementStatus, string> = {
+  flagged: "bg-amber-500",
+  rfq_sent: "bg-blue-500",
+  quotes_received: "bg-violet-500",
+  po_sent: "bg-blue-500",
+  shipped: "bg-blue-500",
+  delivered: "bg-emerald-500",
 };
 
-const SHIPMENT_BADGE: Record<string, { label: string; className: string }> = {
-  draft:            { label: "PO Sent",          className: "border-indigo-500/30 bg-indigo-500/10 text-indigo-700" },
-  shipment_created: { label: "Shipment Created", className: "border-blue-500/30 bg-blue-500/10 text-blue-700" },
-  label_created:    { label: "Label Created",    className: "border-indigo-500/30 bg-indigo-500/10 text-indigo-700" },
-  picked_up:        { label: "Picked Up",        className: "border-cyan-500/30 bg-cyan-500/10 text-cyan-700" },
-  in_transit:       { label: "In Transit",       className: "border-amber-500/30 bg-amber-500/10 text-amber-700" },
-  out_for_delivery: { label: "Out for Delivery", className: "border-orange-500/30 bg-orange-500/10 text-orange-700" },
-  delivered:        { label: "Delivered",         className: "border-emerald-500/30 bg-emerald-500/10 text-emerald-700" },
+const SHIPMENT_DOT: Record<string, { label: string; dot: string }> = {
+  draft:            { label: "PO Sent",          dot: "bg-blue-500" },
+  shipment_created: { label: "Shipment Created", dot: "bg-blue-500" },
+  label_created:    { label: "Label Created",    dot: "bg-blue-500" },
+  picked_up:        { label: "Picked Up",        dot: "bg-cyan-500" },
+  in_transit:       { label: "In Transit",       dot: "bg-amber-500" },
+  out_for_delivery: { label: "Out for Delivery", dot: "bg-orange-500" },
+  delivered:        { label: "Delivered",         dot: "bg-emerald-500" },
 };
 
 function getEffectiveBadge(
   itemStatus: ProcurementStatus,
   shipment?: ProcurementDemoShipment,
-): { label: string; className: string } {
+): { label: string; dot: string } {
   if (
     (itemStatus === "po_sent" || itemStatus === "shipped") &&
     shipment
   ) {
     return (
-      SHIPMENT_BADGE[shipment.status] ?? {
+      SHIPMENT_DOT[shipment.status] ?? {
         label: statusLabels[itemStatus],
-        className: statusBadgeClass[itemStatus],
+        dot: statusDotColor[itemStatus],
       }
     );
   }
   return {
     label: statusLabels[itemStatus],
-    className: statusBadgeClass[itemStatus],
+    dot: statusDotColor[itemStatus],
   };
 }
 
@@ -753,12 +752,10 @@ export default function ItemDetailPanel({ item: initialItem, onClose, onItemUpda
                   <h2 className="font-display text-[22px] font-medium leading-none text-foreground">
                     {initialItem.name}
                   </h2>
-                  <Badge
-                    variant="outline"
-                    className={cn("text-[11px] font-semibold", getEffectiveBadge(item.status, demoData.shipment).className)}
-                  >
+                  <span className="inline-flex items-center gap-2 text-[12px] text-muted-foreground">
+                    <span className={cn("h-1.5 w-1.5 rounded-full shrink-0", getEffectiveBadge(item.status, demoData.shipment).dot)} />
                     {getEffectiveBadge(item.status, demoData.shipment).label}
-                  </Badge>
+                  </span>
                 </div>
                 <div className="mt-2 flex flex-wrap items-center gap-4 text-[13px] text-muted-foreground">
                   <span className="inline-flex items-center gap-1.5">

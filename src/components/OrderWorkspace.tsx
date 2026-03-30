@@ -295,12 +295,15 @@ function getSectionSummary(key: SectionKey, order: Order): string {
   }
 }
 
+export type StageChangeHandler = (newStage: import("@/lib/types").OrderStage, data?: Partial<Order>) => Promise<void>;
+
 interface OrderWorkspaceProps {
   order: Order;
   demoCtx?: DemoContext;
+  onStageChange?: StageChangeHandler;
 }
 
-export function OrderWorkspace({ order, demoCtx }: OrderWorkspaceProps) {
+export function OrderWorkspace({ order, demoCtx, onStageChange }: OrderWorkspaceProps) {
   const sections: { key: SectionKey; active: boolean }[] = [];
   for (const def of SECTION_DEFS) {
     if (def.shouldRender(order)) {
@@ -341,7 +344,7 @@ export function OrderWorkspace({ order, demoCtx }: OrderWorkspaceProps) {
             completedDate={date}
             summary={summary}
           >
-            {renderSection(key, order, mode, demoCtx)}
+            {renderSection(key, order, mode, demoCtx, onStageChange)}
           </TimelineSection>
         );
       })}
@@ -349,7 +352,7 @@ export function OrderWorkspace({ order, demoCtx }: OrderWorkspaceProps) {
   );
 }
 
-function renderSection(key: SectionKey, order: Order, mode: "active" | "completed", demoCtx?: DemoContext) {
+function renderSection(key: SectionKey, order: Order, mode: "active" | "completed", demoCtx?: DemoContext, onStageChange?: StageChangeHandler) {
   switch (key) {
     case "delivery":
       return <OrderDeliveryBanner order={order} />;
@@ -362,15 +365,15 @@ function renderSection(key: SectionKey, order: Order, mode: "active" | "complete
     case "quote":
       return <QuoteSentSection order={order} mode={mode} demoCtx={demoCtx} />;
     case "quote_draft":
-      return <QuoteDraftSection order={order} mode={mode} />;
+      return <QuoteDraftSection order={order} mode={mode} onStageChange={onStageChange} />;
     case "inventory_check":
-      return <InventoryCheckSection order={order} mode={mode} />;
+      return <InventoryCheckSection order={order} mode={mode} onStageChange={onStageChange} />;
     case "bom_review":
-      return <BomReviewSection order={order} mode={mode} />;
+      return <BomReviewSection order={order} mode={mode} onStageChange={onStageChange} />;
     case "clarification":
       return <ClarificationSection order={order} mode={mode} />;
     case "rfq":
-      return <RfqReceivedSection order={order} mode={mode} demoCtx={demoCtx} />;
+      return <RfqReceivedSection order={order} mode={mode} demoCtx={demoCtx} onStageChange={onStageChange} />;
     default:
       return null;
   }

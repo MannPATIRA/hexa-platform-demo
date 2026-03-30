@@ -64,12 +64,15 @@ function StageBadge({ stage }: { stage: OrderStage }) {
     dot: "bg-muted-foreground",
   };
   return (
-    <span className="inline-flex items-center gap-2 border border-border bg-muted/40 px-2.5 py-1 text-[11px] font-medium text-foreground/80">
+    <span className="inline-flex items-center gap-2 text-[12px] text-muted-foreground">
       <span className={cn("h-1.5 w-1.5 rounded-full shrink-0", config.dot)} />
       {config.label}
     </span>
   );
 }
+
+const GRID_COLS = "13rem 5rem 1fr 3rem 11rem 6.5rem";
+const gridStyle = { gridTemplateColumns: GRID_COLS, columnGap: "0.75rem" } as const;
 
 type DateSort = "newest" | "oldest";
 
@@ -187,23 +190,23 @@ export function OrdersListClient({ orders }: { orders: Order[] }) {
       </div>
 
       {/* Column headers */}
-      <div className="flex items-center border-b border-border px-7 py-2">
-        <div className="w-56 shrink-0 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+      <div className="grid items-center border-b border-border px-7 py-2" style={gridStyle}>
+        <div className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
           Order
         </div>
-        <div className="w-20 shrink-0 text-center text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+        <div className="text-center text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
           Source
         </div>
-        <div className="flex-1 min-w-0 text-left text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+        <div className="text-left text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
           Subject
         </div>
-        <div className="w-14 shrink-0 text-center text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+        <div className="text-center text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
           Items
         </div>
-        <div className="w-48 shrink-0 pl-4 text-left text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+        <div className="text-left text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
           Status
         </div>
-        <div className="w-28 shrink-0 text-right text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+        <div className="text-right text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
           Date
         </div>
       </div>
@@ -236,8 +239,8 @@ export function OrdersListClient({ orders }: { orders: Order[] }) {
                   href={`/orders/${order.id}`}
                   className="group block w-full border text-left transition-all duration-200 border-border bg-background/30 cursor-pointer hover:border-primary/60 hover:bg-primary/5"
                 >
-                  <div className="flex items-center px-4 py-3.5">
-                    <div className="flex w-56 shrink-0 items-center gap-3.5">
+                  <div className="grid items-center px-4 py-3.5" style={gridStyle}>
+                    <div className="flex items-center gap-3.5 min-w-0">
                       <Avatar className="h-9 w-9 shrink-0 overflow-hidden">
                         <AvatarFallback className="flex size-full min-w-0 items-center justify-center overflow-hidden bg-muted text-[10px] font-semibold leading-none tracking-tight text-muted-foreground">
                           {initials}
@@ -254,11 +257,11 @@ export function OrdersListClient({ orders }: { orders: Order[] }) {
                       </div>
                     </div>
 
-                    <div className="w-20 shrink-0 flex justify-center">
+                    <div className="flex justify-center">
                       <SourceBadge source={order.source} />
                     </div>
 
-                    <div className="flex-1 min-w-0 text-left">
+                    <div className="min-w-0 text-left">
                       <p className="truncate text-[12px] text-muted-foreground">
                         {order.emailSubject}
                       </p>
@@ -268,15 +271,30 @@ export function OrdersListClient({ orders }: { orders: Order[] }) {
                       </p>
                     </div>
 
-                    <div className="w-14 shrink-0 text-center">
+                    <div className="text-center">
                       <p className="text-[12px] text-foreground/80">{order.totalItems}</p>
                     </div>
 
-                    <div className="w-48 shrink-0 pl-4 flex justify-start">
+                    <div className="flex items-center gap-2">
                       <StageBadge stage={order.stage} />
+                      {order.orderType === "quote_builder" && order.inventoryStatus && (() => {
+                        const outCount = order.inventoryStatus.filter((i) => i.status === "out_of_stock").length;
+                        const lowCount = order.inventoryStatus.filter((i) => i.status === "low").length;
+                        if (outCount > 0) return (
+                          <span className="inline-flex items-center gap-1 border border-red-500/30 bg-red-500/10 px-1.5 py-0.5 text-[9px] font-semibold text-red-700">
+                            <span className="h-1.5 w-1.5 rounded-full bg-red-500" />{outCount} out
+                          </span>
+                        );
+                        if (lowCount > 0) return (
+                          <span className="inline-flex items-center gap-1 border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 text-[9px] font-semibold text-amber-700">
+                            <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />{lowCount} low
+                          </span>
+                        );
+                        return null;
+                      })()}
                     </div>
 
-                    <div className="w-28 shrink-0 text-right">
+                    <div className="text-right">
                       <p className="text-[12px] text-muted-foreground">
                         {new Date(order.createdAt).toLocaleDateString("en-US", {
                           month: "short",

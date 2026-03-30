@@ -2,16 +2,16 @@
 
 import { useState, useCallback, useMemo } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { CatalogItem, Order } from "@/lib/types";
 import { LineItemsPanel } from "../LineItemsPanel";
 import { Send, Save, Phone, ExternalLink, Layers } from "lucide-react";
-import type { DemoContext } from "../OrderWorkspace";
+import type { DemoContext, StageChangeHandler } from "../OrderWorkspace";
 
 interface Props {
   order: Order;
   mode: "active" | "completed";
   demoCtx?: DemoContext;
+  onStageChange?: StageChangeHandler;
 }
 
 function toCustomerQuestion(rawIssue: string): string {
@@ -136,7 +136,7 @@ function CompletedRfqTable({ order }: { order: Order }) {
   );
 }
 
-export function RfqReceivedSection({ order, mode, demoCtx }: Props) {
+export function RfqReceivedSection({ order, mode, demoCtx, onStageChange }: Props) {
   const [resolutions, setResolutions] = useState<Record<string, CatalogItem>>(
     () => {
       const initial: Record<string, CatalogItem> = {};
@@ -214,7 +214,6 @@ export function RfqReceivedSection({ order, mode, demoCtx }: Props) {
   const [emailSubject, setEmailSubject] = useState(
     `${order.orderNumber} — Quick clarification needed before we finalise your quote`
   );
-  const router = useRouter();
   const [emailSent, setEmailSent] = useState(false);
   const [clarificationAddedIds, setClarificationAddedIds] = useState<Set<string>>(new Set());
   const [startingBom, setStartingBom] = useState(false);
@@ -389,12 +388,9 @@ export function RfqReceivedSection({ order, mode, demoCtx }: Props) {
             onClick={async () => {
               setStartingBom(true);
               try {
-                await fetch(`/api/orders/${order.id}/stage`, {
-                  method: "PATCH",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ stage: "bom_review", orderType: "quote_builder" }),
-                });
-                router.refresh();
+                if (onStageChange) {
+                  await onStageChange("bom_review", { orderType: "quote_builder" });
+                }
               } catch { setStartingBom(false); }
             }}
             disabled={startingBom}
