@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { OrderWorkspace } from "@/components/OrderWorkspace";
 import type { DemoContext } from "@/components/OrderWorkspace";
+import { AttachmentViewer } from "@/components/AttachmentViewer";
 import { OrderProcessBar } from "./OrderProcessBar";
 import { useOrderDemoFlow } from "@/hooks/useOrderDemoFlow";
 import type { Order, OrderStage } from "@/lib/types";
@@ -52,10 +53,10 @@ const DEMO_BADGE_MAP: Record<string, { label: string; dot: string }> = {
 
 interface Props {
   order: Order;
-  leftPanel: React.ReactNode | null;
+  showLeftPanel?: boolean;
 }
 
-export function OrderDetailClient({ order: initialOrder, leftPanel }: Props) {
+export function OrderDetailClient({ order: initialOrder, showLeftPanel = false }: Props) {
   const [currentOrder, setCurrentOrder] = useState<Order>(initialOrder);
   const [manualStage, setManualStage] = useState(false);
   const [workspaceKey, setWorkspaceKey] = useState(0);
@@ -158,10 +159,12 @@ export function OrderDetailClient({ order: initialOrder, leftPanel }: Props) {
 
       <OrderProcessBar order={order} onStageChange={handleStageChange} />
 
-      {leftPanel ? (
+      {showLeftPanel ? (
         <div className="grid grid-cols-1 gap-8 xl:grid-cols-5">
           <div className="xl:col-span-2">
-            {leftPanel}
+            <div className="border border-border bg-card p-6 shadow-sm">
+              <AttachmentViewer attachments={order.attachments ?? []} />
+            </div>
           </div>
           <div className="xl:col-span-3">
             <OrderWorkspace key={workspaceKey} order={order} demoCtx={demoCtx} onStageChange={handleStageChange} />

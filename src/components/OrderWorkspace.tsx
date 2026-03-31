@@ -321,18 +321,6 @@ export function OrderWorkspace({ order, demoCtx, onStageChange }: OrderWorkspace
 
   return (
     <div>
-      {demoCtx && (
-        <div className="mb-4 flex items-center gap-2">
-          <span className="inline-flex items-center border border-blue-500/30 bg-blue-500/10 px-2.5 py-1 text-[11px] font-semibold text-blue-700">
-            Live Demo
-          </span>
-          {demoCtx.isAutoProgressing && (
-            <span className="text-[11px] text-muted-foreground animate-pulse">
-              Waiting for response...
-            </span>
-          )}
-        </div>
-      )}
       {sections.map(({ key, active }, idx) => {
         const isLast = idx === sections.length - 1;
         const title = getSectionTitle(key, order);

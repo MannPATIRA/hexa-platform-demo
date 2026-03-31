@@ -1,4 +1,4 @@
-import type { Order, ComparisonField } from "./types";
+import type { Order, Attachment, ComparisonField } from "./types";
 
 export interface DemoStep {
   id: string;
@@ -41,6 +41,32 @@ function derivePoNumber(order: Order): string {
 
 function deriveErpId(order: Order): string {
   return `ERP-${order.orderNumber.replace("ORD-", "")}`;
+}
+
+function buildPoAttachment(
+  order: Order,
+  variant: "mismatch" | "match" | "revised",
+): Attachment {
+  const poNumber = variant === "revised"
+    ? `${derivePoNumber(order)}-R1`
+    : derivePoNumber(order);
+  const suffix = variant === "mismatch" ? "-mismatch" : "";
+  const fileName = `${poNumber}${suffix}.pdf`;
+  const pdfUrl = variant === "mismatch"
+    ? "/po-mismatch-q-2026-0047.pdf"
+    : "/po-match-q-2026-0047.pdf";
+  return {
+    id: `att-po-${variant}-${order.id.slice(-6)}`,
+    fileName,
+    mimeType: "application/pdf",
+    size: variant === "mismatch" ? 3_100 : 3_400,
+    url: pdfUrl,
+  };
+}
+
+function appendAttachment(existing: Attachment[], newAtt: Attachment): Attachment[] {
+  if (existing.some((a) => a.id === newAtt.id)) return existing;
+  return [...existing, newAtt];
 }
 
 const STEP_CLARIFICATION_SENT: DemoStep = {
@@ -205,6 +231,7 @@ const STEP_PO_MISMATCH: DemoStep = {
       .join("\n");
 
     const customerName = order.customer.name.split(" ")[0];
+    const poAttachment = buildPoAttachment(order, "mismatch");
 
     return {
       ...order,
@@ -212,6 +239,7 @@ const STEP_PO_MISMATCH: DemoStep = {
       poNumber,
       paymentTerms: order.paymentTerms || "Net 30",
       shipVia: order.shipVia || "FedEx Economy",
+      attachments: appendAttachment(order.attachments ?? [], poAttachment),
       demoFlow: {
         ...order.demoFlow!,
         stage: "po_received",
@@ -249,9 +277,11 @@ const STEP_PO_MATCH_REVISED: DemoStep = {
   apply: (order) => {
     const revisedPoNumber =
       (order.demoFlow?.poNumber ?? order.poNumber ?? "PO") + "-R1";
+    const poAttachment = buildPoAttachment(order, "revised");
     return {
       ...order,
       stage: "po_received",
+      attachments: appendAttachment(order.attachments ?? [], poAttachment),
       demoFlow: {
         ...order.demoFlow!,
         stage: "po_validated",
@@ -282,11 +312,13 @@ const STEP_PO_MATCH_CLEAN: DemoStep = {
   apply: (order) => {
     const poNumber = derivePoNumber(order);
     const quoteNumber = order.demoFlow!.quoteNumber ?? deriveQuoteNumber(order);
+    const poAttachment = buildPoAttachment(order, "match");
     return {
       ...order,
       stage: "po_received",
       poNumber,
       paymentTerms: order.paymentTerms || "Net 30",
+      attachments: appendAttachment(order.attachments ?? [], poAttachment),
       demoFlow: {
         ...order.demoFlow!,
         stage: "po_validated",

@@ -2,7 +2,6 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getOrderById } from "@/lib/store";
 import { CollapsibleCustomerCard } from "@/components/CollapsibleCustomerCard";
-import { AttachmentViewer } from "@/components/AttachmentViewer";
 import { OrderDetailClient } from "@/components/orders/OrderDetailClient";
 import { ArrowLeft } from "lucide-react";
 
@@ -34,13 +33,7 @@ export default async function OrderDetailPage({
 
       <OrderDetailClient
         order={order}
-        leftPanel={
-          order.source !== "phone" ? (
-            <div className="border border-border bg-card p-6 shadow-sm">
-              <AttachmentViewer attachments={order.attachments ?? []} />
-            </div>
-          ) : null
-        }
+        showLeftPanel={order.source !== "phone"}
       />
     </div>
   );
