@@ -268,9 +268,46 @@ export function RfqReceivedSection({ order, mode, demoCtx, onStageChange }: Prop
     return <CompletedRfqTable order={order} />;
   }
 
+  const buildDetailedQuoteBlock = allResolved ? (
+    <div className="border border-emerald-500/20 bg-emerald-500/5 p-4 space-y-3">
+      <div className="flex items-center gap-3">
+        <div className="flex h-5 w-5 shrink-0 items-center justify-center border border-emerald-500/40 bg-emerald-500/10">
+          <Layers className="h-3 w-3 text-emerald-600" />
+        </div>
+        <div className="flex-1">
+          <p className="text-[13px] font-semibold text-emerald-800">All items resolved — ready to build quote</p>
+          <p className="text-[11px] text-emerald-700/70 mt-0.5">{totalCount} items confirmed · next: BOM breakdown → inventory check → quote builder</p>
+        </div>
+        <button
+          type="button"
+          onClick={async () => {
+            setStartingBom(true);
+            try {
+              if (onStageChange) {
+                await onStageChange("bom_review", {
+                  orderType: "quote_builder",
+                  lineItems: order.lineItems,
+                  demoFlow: order.demoFlow,
+                });
+              }
+            } catch { setStartingBom(false); }
+          }}
+          disabled={startingBom}
+          className="inline-flex items-center gap-2 bg-foreground px-4 py-2.5 text-[12px] font-medium text-background transition-opacity hover:opacity-90 disabled:opacity-60 shrink-0"
+        >
+          <Layers className="h-3.5 w-3.5" />
+          {startingBom ? "Loading..." : "Build Detailed Quote"}
+        </button>
+      </div>
+    </div>
+  ) : null;
+
   return (
     <div className="space-y-4">
       <CallTranscriptLink order={order} />
+
+      {buildDetailedQuoteBlock}
+
       <div className="border border-border bg-background shadow-sm px-4 py-3">
         <div className="flex flex-wrap items-center gap-x-6 gap-y-1 text-[12px] text-muted-foreground">
           <span>
@@ -305,7 +342,7 @@ export function RfqReceivedSection({ order, mode, demoCtx, onStageChange }: Prop
         )}
       </div>
 
-      {resolvedCount < totalCount && (
+      {!allResolved && resolvedCount < totalCount && (
         <div className="flex items-center gap-4 border border-border bg-background shadow-sm px-4 py-3">
           <div className="h-1.5 flex-1 overflow-hidden bg-muted">
             <div
@@ -380,47 +417,6 @@ export function RfqReceivedSection({ order, mode, demoCtx, onStageChange }: Prop
                 Save Draft
               </button>
             </div>
-          </div>
-        </div>
-      )}
-
-      {allResolved && (
-        <div className="border-t border-border pt-4 space-y-3">
-          <button
-            type="button"
-            onClick={async () => {
-              setStartingBom(true);
-              try {
-                if (onStageChange) {
-                  await onStageChange("bom_review", {
-                    orderType: "quote_builder",
-                    lineItems: order.lineItems,
-                    demoFlow: order.demoFlow,
-                  });
-                }
-              } catch { setStartingBom(false); }
-            }}
-            disabled={startingBom}
-            className="inline-flex items-center gap-2 bg-foreground px-4 py-2.5 text-[12px] font-medium text-background transition-opacity hover:opacity-90 disabled:opacity-60"
-          >
-            <Layers className="h-3.5 w-3.5" />
-            {startingBom ? "Loading..." : "Build Detailed Quote"}
-          </button>
-          <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
-            <span className="inline-flex items-center gap-1.5">
-              <span className="flex h-4 w-4 items-center justify-center border border-blue-500/40 bg-blue-500/10 text-[9px] font-semibold text-blue-700">1</span>
-              BOM breakdown
-            </span>
-            <span className="text-border">→</span>
-            <span className="inline-flex items-center gap-1.5">
-              <span className="flex h-4 w-4 items-center justify-center border border-blue-500/40 bg-blue-500/10 text-[9px] font-semibold text-blue-700">2</span>
-              Inventory check
-            </span>
-            <span className="text-border">→</span>
-            <span className="inline-flex items-center gap-1.5">
-              <span className="flex h-4 w-4 items-center justify-center border border-blue-500/40 bg-blue-500/10 text-[9px] font-semibold text-blue-700">3</span>
-              Quote builder
-            </span>
           </div>
         </div>
       )}
