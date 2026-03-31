@@ -62,6 +62,7 @@ export async function POST(request: Request) {
     orderNumber: `ORD-2026-${String(existingOrders.length + 43).padStart(4, "0")}`,
     stage: body.stage ?? defaultStage,
     source: body.source || "email",
+    orderType: body.orderType ?? "quote_builder",
     createdAt: new Date().toISOString(),
     emailSubject: body.emailSubject || "New Order",
     customer,

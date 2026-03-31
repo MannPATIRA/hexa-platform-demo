@@ -58,8 +58,12 @@ interface Props {
 export function OrderProcessBar({ order, onStageChange }: Props) {
   const [navigating, setNavigating] = useState<string | null>(null);
 
-  const pipeline = order.orderType === "quote_builder" ? QUOTE_BUILDER_PIPELINE : STANDARD_PIPELINE;
-  const mappedStage = STAGE_TO_PIPELINE_INDEX[order.stage] ?? order.stage;
+  const isQuoteBuilder = order.orderType === "quote_builder";
+  const pipeline = isQuoteBuilder ? QUOTE_BUILDER_PIPELINE : STANDARD_PIPELINE;
+  let mappedStage = STAGE_TO_PIPELINE_INDEX[order.stage] ?? order.stage;
+  if (isQuoteBuilder && (mappedStage === "quote_sent" || mappedStage === "quote_prepared")) {
+    mappedStage = "quote_draft";
+  }
   const currentIdx = pipeline.findIndex((s) => s.stage === mappedStage);
 
   const handleGoBack = useCallback(async (targetStage: OrderStage) => {

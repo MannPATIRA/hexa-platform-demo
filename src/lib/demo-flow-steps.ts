@@ -501,6 +501,9 @@ export const DEMO_STEPS: DemoStep[] = getDemoSteps({ source: "email" } as Order)
 
 export function isDemoEligible(order: Order): boolean {
   if (!order.demoFlow?.scenario) return false;
+  if (order.orderType === "quote_builder") {
+    return order.stage === "quote_sent" || order.stage === "po_received";
+  }
   return (
     order.stage === "rfq_received" ||
     order.stage === "po_received" ||
