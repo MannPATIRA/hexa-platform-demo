@@ -145,7 +145,7 @@ export function QuoteDraftSection({ order, mode, onStageChange }: Props) {
         </div>
       </div>
 
-      <div className="border border-border bg-card">
+      <div className="border border-border bg-background shadow-sm overflow-hidden">
         <div className="border-b border-border bg-muted/30 px-4 py-2.5">
           <div className="flex flex-wrap items-center gap-x-6 gap-y-1 text-[12px]">
             <span className="text-muted-foreground">
@@ -165,7 +165,7 @@ export function QuoteDraftSection({ order, mode, onStageChange }: Props) {
         <div className="overflow-x-auto">
           <table className="min-w-[700px] w-full text-[12px]">
             <thead>
-              <tr className="border-b border-border bg-muted/20">
+              <tr className="border-b border-border bg-muted/50">
                 <th className="px-4 py-2 text-left font-medium text-muted-foreground w-8">#</th>
                 <th className="px-3 py-2 text-left font-medium text-muted-foreground">Product</th>
                 <th className="px-3 py-2 text-left font-medium text-muted-foreground">SKU</th>

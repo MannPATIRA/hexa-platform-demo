@@ -93,7 +93,7 @@ export function InventoryCheckSection({ order, mode, onStageChange }: Props) {
         Stock levels checked against required quantities. Flag any shortfalls for procurement before building the quote.
       </p>
 
-      <div className="flex flex-wrap items-center gap-x-6 gap-y-1 border border-border bg-muted/20 px-4 py-3 text-[12px] text-muted-foreground">
+      <div className="flex flex-wrap items-center gap-x-6 gap-y-1 border border-border bg-background shadow-sm px-4 py-3 text-[12px] text-muted-foreground">
         <span>
           <span className="font-medium text-foreground/85">{counts.total}</span> components
         </span>
@@ -121,7 +121,7 @@ export function InventoryCheckSection({ order, mode, onStageChange }: Props) {
         )}
       </div>
 
-      <div className="border border-border">
+      <div className="border border-border bg-background shadow-sm overflow-hidden">
         <table className="w-full text-[12px]">
           <thead>
             <tr className="border-b border-border bg-muted/50">

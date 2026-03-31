@@ -31,6 +31,7 @@ function generateClarificationQuestions(order: Order): string[] {
 }
 
 function deriveQuoteNumber(order: Order): string {
+  if (order.demoFlow?.quoteSummary?.quoteNumber) return order.demoFlow.quoteSummary.quoteNumber;
   return `Q-${order.orderNumber.replace("ORD-", "")}`;
 }
 
@@ -274,6 +275,7 @@ const STEP_PO_MISMATCH: DemoStep = {
         ...order.demoFlow!,
         stage: "po_received",
         poNumber,
+        quoteNumber,
         poConfirmation: {
           poNumber,
           receivedAt: now(),
@@ -338,6 +340,7 @@ const STEP_PO_MATCH_CLEAN: DemoStep = {
   delayMs: 2000,
   apply: (order) => {
     const poNumber = derivePoNumber(order);
+    const quoteNumber = order.demoFlow!.quoteNumber ?? deriveQuoteNumber(order);
     return {
       ...order,
       stage: "po_received",
@@ -347,6 +350,7 @@ const STEP_PO_MATCH_CLEAN: DemoStep = {
         ...order.demoFlow!,
         stage: "po_validated",
         poNumber,
+        quoteNumber,
         poConfirmation: {
           poNumber,
           receivedAt: now(),
@@ -497,13 +501,21 @@ export const DEMO_STEPS: DemoStep[] = getDemoSteps({ source: "email" } as Order)
 
 export function isDemoEligible(order: Order): boolean {
   if (!order.demoFlow?.scenario) return false;
-  return order.stage === "rfq_received" || order.stage === "po_received";
+  return (
+    order.stage === "rfq_received" ||
+    order.stage === "po_received" ||
+    order.stage === "quote_sent"
+  );
 }
 
 export function getStartStepIndex(order: Order): number {
+  const steps = getDemoSteps(order);
   if (order.stage === "po_received") {
-    const steps = getDemoSteps(order);
     return steps.findIndex((s) => s.id === "pushed_to_mrp");
+  }
+  if (order.stage === "quote_sent") {
+    const quoteIdx = steps.findIndex((s) => s.id === "quote_sent");
+    return quoteIdx >= 0 ? quoteIdx + 1 : 0;
   }
   return 0;
 }

@@ -102,10 +102,10 @@ export function BomReviewSection({ order, mode, onStageChange }: Props) {
         Review the component breakdown for each line item. Add custom parts or link drawings before continuing.
       </p>
 
-      <div className="flex items-center gap-4 border border-border bg-card px-4 py-3">
+      <div className="flex items-center gap-4 border border-border bg-background px-4 py-3 shadow-sm">
         <div className="h-1.5 flex-1 overflow-hidden bg-muted">
           <div
-            className="h-full bg-blue-500 transition-all duration-500 ease-out"
+            className="h-full bg-amber-500 transition-all duration-500 ease-out"
             style={{ width: "100%" }}
           />
         </div>
@@ -121,7 +121,7 @@ export function BomReviewSection({ order, mode, onStageChange }: Props) {
           const isAssembly = components.length > 1;
 
           return (
-            <div key={item.id} className="border border-border bg-background/30">
+            <div key={item.id} className="border border-border bg-background shadow-sm">
               <button
                 type="button"
                 onClick={() => toggleExpanded(item.id)}

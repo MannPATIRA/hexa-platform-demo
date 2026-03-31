@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { OrderWorkspace } from "@/components/OrderWorkspace";
 import type { DemoContext } from "@/components/OrderWorkspace";
 import { OrderProcessBar } from "./OrderProcessBar";
@@ -73,6 +73,12 @@ export function OrderDetailClient({ order: initialOrder, leftPanel }: Props) {
     setManualStage(true);
     setWorkspaceKey((k) => k + 1);
   }, [currentOrder.id]);
+
+  useEffect(() => {
+    if (demo.isDemoActive && manualStage && !demo.isComplete) {
+      setManualStage(false);
+    }
+  }, [demo.isDemoActive, demo.isComplete, manualStage]);
 
   const demoBadge = demo.isDemoActive ? DEMO_BADGE_MAP[demo.currentStepId] : undefined;
   const config = demoBadge ?? DETAIL_STAGE_CONFIG[order.stage] ?? {

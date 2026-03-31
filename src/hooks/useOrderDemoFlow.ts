@@ -13,7 +13,8 @@ interface DemoState {
 
 type DemoAction =
   | { type: "advance" }
-  | { type: "set_auto_progressing"; value: boolean };
+  | { type: "set_auto_progressing"; value: boolean }
+  | { type: "reset"; order: Order; steps: DemoStep[]; startIndex: number };
 
 function reducer(state: DemoState, action: DemoAction): DemoState {
   switch (action.type) {
@@ -30,6 +31,13 @@ function reducer(state: DemoState, action: DemoAction): DemoState {
     }
     case "set_auto_progressing":
       return { ...state, isAutoProgressing: action.value };
+    case "reset":
+      return {
+        order: action.order,
+        steps: action.steps,
+        stepIndex: action.startIndex,
+        isAutoProgressing: false,
+      };
     default:
       return state;
   }
@@ -49,11 +57,22 @@ export function useOrderDemoFlow(initialOrder: Order) {
   });
 
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const orderStageRef = useRef(initialOrder.stage);
 
   const advance = useCallback(() => {
     if (!eligible) return;
     dispatch({ type: "advance" });
   }, [eligible]);
+
+  useEffect(() => {
+    const stageChanged = initialOrder.stage !== orderStageRef.current;
+    if (eligible && stageChanged) {
+      const newSteps = getDemoSteps(initialOrder);
+      const newStartIndex = getStartStepIndex(initialOrder);
+      dispatch({ type: "reset", order: initialOrder, steps: newSteps, startIndex: newStartIndex });
+    }
+    orderStageRef.current = initialOrder.stage;
+  }, [eligible, initialOrder]);
 
   useEffect(() => {
     if (!eligible) return;

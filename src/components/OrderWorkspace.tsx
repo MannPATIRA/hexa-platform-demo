@@ -43,12 +43,17 @@ function isQuoteBuilder(o: Order): boolean {
 
 const BOM_STAGES = new Set(["bom_review", "inventory_check", "quote_draft"]);
 
+const STAGES_AFTER_BOM = new Set([
+  "po_received", "po_mismatch", "po_validated", "pushed_to_mrp", "shipped", "delivered",
+]);
+
 function hasPassedBomStage(o: Order, stage: string): boolean {
   const pipeline = ["bom_review", "inventory_check", "quote_draft", "quote_sent"];
-  const currentIdx = pipeline.indexOf(o.stage);
   const targetIdx = pipeline.indexOf(stage);
-  if (currentIdx === -1 || targetIdx === -1) return false;
-  return currentIdx > targetIdx;
+  if (targetIdx === -1) return false;
+  const currentIdx = pipeline.indexOf(o.stage);
+  if (currentIdx !== -1) return currentIdx > targetIdx;
+  return STAGES_AFTER_BOM.has(o.stage);
 }
 
 function hasCompletedShipmentLifecycle(order: Order): boolean {

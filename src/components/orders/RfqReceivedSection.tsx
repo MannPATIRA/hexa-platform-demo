@@ -268,7 +268,7 @@ export function RfqReceivedSection({ order, mode, demoCtx, onStageChange }: Prop
   return (
     <div className="space-y-4">
       <CallTranscriptLink order={order} />
-      <div className="border border-border bg-muted/20 px-4 py-3">
+      <div className="border border-border bg-background shadow-sm px-4 py-3">
         <div className="flex flex-wrap items-center gap-x-6 gap-y-1 text-[12px] text-muted-foreground">
           <span>
             Parse Confidence:{" "}
@@ -303,7 +303,7 @@ export function RfqReceivedSection({ order, mode, demoCtx, onStageChange }: Prop
       </div>
 
       {resolvedCount < totalCount && (
-        <div className="flex items-center gap-4 border border-border bg-card px-4 py-3">
+        <div className="flex items-center gap-4 border border-border bg-background shadow-sm px-4 py-3">
           <div className="h-1.5 flex-1 overflow-hidden bg-muted">
             <div
               className="h-full bg-emerald-500 transition-all duration-500 ease-out"
@@ -316,7 +316,7 @@ export function RfqReceivedSection({ order, mode, demoCtx, onStageChange }: Prop
         </div>
       )}
 
-      <div className="border border-border bg-card p-5">
+      <div className="border border-border bg-background shadow-sm p-5">
         <LineItemsPanel
           items={order.lineItems}
           resolutions={resolutions}
@@ -327,7 +327,7 @@ export function RfqReceivedSection({ order, mode, demoCtx, onStageChange }: Prop
       </div>
 
       {(detectedQuestions.length > 0 || clarificationAddedIds.size > 0) && (
-        <div className="space-y-3 border border-border bg-muted/20 p-5">
+        <div className="space-y-3 border border-border bg-background shadow-sm p-5">
           <h4 className="text-[12px] font-semibold uppercase tracking-wide text-amber-800">
             Clarification Questions Detected ({detectedQuestions.length})
           </h4>
