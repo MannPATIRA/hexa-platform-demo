@@ -161,7 +161,10 @@ export function RfqReceivedSection({ order, mode, demoCtx, onStageChange }: Prop
 
   const resolvedCount = Object.keys(resolutions).length;
   const totalCount = order.lineItems.length;
-  const allResolved = resolvedCount === totalCount;
+  const allItemsConfirmed = order.lineItems.every(
+    (item) => item.matchStatus === "confirmed"
+  );
+  const allResolved = resolvedCount === totalCount || allItemsConfirmed;
   const issueItems = order.lineItems.filter(
     (i) => i.matchStatus !== "confirmed"
   );
@@ -389,7 +392,11 @@ export function RfqReceivedSection({ order, mode, demoCtx, onStageChange }: Prop
               setStartingBom(true);
               try {
                 if (onStageChange) {
-                  await onStageChange("bom_review", { orderType: "quote_builder" });
+                  await onStageChange("bom_review", {
+                    orderType: "quote_builder",
+                    lineItems: order.lineItems,
+                    demoFlow: order.demoFlow,
+                  });
                 }
               } catch { setStartingBom(false); }
             }}

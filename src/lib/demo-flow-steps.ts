@@ -86,67 +86,8 @@ const STEP_CLARIFICATION_REPLY: DemoStep = {
   type: "auto",
   delayMs: 5000,
   apply: (order) => {
-    const clarifications = [...(order.demoFlow!.clarifications ?? [])];
-    const unresolvedItems = order.lineItems.filter(
-      (i) => i.matchStatus !== "confirmed"
-    );
-
-    const parsedAnswers = unresolvedItems.map((item) => {
-      if (item.matchedCatalogItems.length > 0) {
-        const match = item.matchedCatalogItems[0];
-        return `${item.parsedProductName} confirmed as ${match.catalogName} (${match.catalogSku})`;
-      }
-      return `${item.parsedProductName}: specs confirmed, ready for custom quoting`;
-    });
-    if (order.parseMissingFields && order.parseMissingFields.length > 0) {
-      parsedAnswers.push("Due date and pricing expectations confirmed");
-    }
-
-    if (clarifications.length > 0) {
-      const customerName = order.customer.name.split(" ")[0];
-      clarifications[0] = {
-        ...clarifications[0],
-        replyReceived: {
-          body: `Hi,\n\nHere are the clarifications you requested:\n\n${parsedAnswers.map((a, i) => `${i + 1}. ${a}`).join("\n")}\n\nThanks,\n${customerName}`,
-          receivedAt: now(),
-          parsedAnswers,
-        },
-      };
-    }
-
-    const lineItems = order.lineItems.map((item) => {
-      if (item.matchStatus === "confirmed") return item;
-      const match = item.matchedCatalogItems[0];
-      if (match) {
-        return {
-          ...item,
-          parsedSku: match.catalogSku,
-          parsedProductName: match.catalogName,
-          parsedUnitPrice: match.catalogPrice,
-          matchStatus: "confirmed" as const,
-          confidence: 92,
-          matchedCatalogItems: [match],
-          issues: [],
-        };
-      }
-      const fallbackPrice = item.parsedUnitPrice ?? 25.0;
-      return {
-        ...item,
-        parsedUnitPrice: fallbackPrice,
-        matchStatus: "confirmed" as const,
-        confidence: 85,
-        matchedCatalogItems: [
-          {
-            catalogSku: `CUSTOM-${item.lineNumber}`,
-            catalogName: item.parsedProductName,
-            catalogDescription: `Custom item — ${item.parsedProductName}`,
-            catalogPrice: fallbackPrice,
-            catalogUom: item.parsedUom || "unit",
-          },
-        ],
-        issues: [],
-      };
-    });
+    const clarifications = buildClarificationReply(order);
+    const lineItems = resolveLineItems(order);
 
     const quoteNumber = deriveQuoteNumber(order);
     const quoteItems = lineItems.map((li) => ({
@@ -471,8 +412,110 @@ const SHIPPING_STEPS: DemoStep[] = [
   },
 ];
 
+function resolveLineItems(order: Order) {
+  return order.lineItems.map((item) => {
+    if (item.matchStatus === "confirmed") return item;
+    const match = item.matchedCatalogItems[0];
+    if (match) {
+      return {
+        ...item,
+        parsedSku: match.catalogSku,
+        parsedProductName: match.catalogName,
+        parsedUnitPrice: match.catalogPrice,
+        matchStatus: "confirmed" as const,
+        confidence: 92,
+        matchedCatalogItems: [match],
+        issues: [],
+      };
+    }
+    const fallbackPrice = item.parsedUnitPrice ?? 25.0;
+    return {
+      ...item,
+      parsedUnitPrice: fallbackPrice,
+      matchStatus: "confirmed" as const,
+      confidence: 85,
+      matchedCatalogItems: [
+        {
+          catalogSku: `CUSTOM-${item.lineNumber}`,
+          catalogName: item.parsedProductName,
+          catalogDescription: `Custom item — ${item.parsedProductName}`,
+          catalogPrice: fallbackPrice,
+          catalogUom: item.parsedUom || "unit",
+        },
+      ],
+      issues: [],
+    };
+  });
+}
+
+function buildClarificationReply(order: Order) {
+  const clarifications = [...(order.demoFlow!.clarifications ?? [])];
+  const unresolvedItems = order.lineItems.filter(
+    (i) => i.matchStatus !== "confirmed"
+  );
+
+  const parsedAnswers = unresolvedItems.map((item) => {
+    if (item.matchedCatalogItems.length > 0) {
+      const match = item.matchedCatalogItems[0];
+      return `${item.parsedProductName} confirmed as ${match.catalogName} (${match.catalogSku})`;
+    }
+    return `${item.parsedProductName}: specs confirmed, ready for custom quoting`;
+  });
+  if (order.parseMissingFields && order.parseMissingFields.length > 0) {
+    parsedAnswers.push("Due date and pricing expectations confirmed");
+  }
+
+  if (clarifications.length > 0) {
+    const customerName = order.customer.name.split(" ")[0];
+    clarifications[0] = {
+      ...clarifications[0],
+      replyReceived: {
+        body: `Hi,\n\nHere are the clarifications you requested:\n\n${parsedAnswers.map((a, i) => `${i + 1}. ${a}`).join("\n")}\n\nThanks,\n${customerName}`,
+        receivedAt: now(),
+        parsedAnswers,
+      },
+    };
+  }
+
+  return clarifications;
+}
+
+const STEP_QB_CLARIFICATION_REPLY: DemoStep = {
+  id: "clarification_reply",
+  type: "auto",
+  delayMs: 5000,
+  apply: (order) => {
+    const clarifications = buildClarificationReply(order);
+    const lineItems = resolveLineItems(order);
+    return {
+      ...order,
+      stage: "rfq_received",
+      dueDate: order.dueDate || "2026-04-20",
+      lineItems,
+      parseMissingFields: [],
+      demoFlow: {
+        ...order.demoFlow!,
+        clarifications,
+      },
+    };
+  },
+};
+
 export function getDemoSteps(order: Order): DemoStep[] {
   const isPhone = order.source === "phone";
+
+  if (order.orderType === "quote_builder") {
+    const isPoPhase =
+      order.stage === "quote_sent" ||
+      order.stage === "po_received" ||
+      order.stage === "po_mismatch";
+    if (isPoPhase) {
+      return isPhone
+        ? [STEP_PO_MATCH_CLEAN, STEP_PUSHED_TO_MRP, ...SHIPPING_STEPS]
+        : [STEP_PO_MISMATCH, STEP_CORRECTION_SENT, STEP_PO_MATCH_REVISED, STEP_PUSHED_TO_MRP, ...SHIPPING_STEPS];
+    }
+    return [STEP_CLARIFICATION_SENT, STEP_QB_CLARIFICATION_REPLY];
+  }
 
   if (isPhone) {
     return [
@@ -502,7 +545,11 @@ export const DEMO_STEPS: DemoStep[] = getDemoSteps({ source: "email" } as Order)
 export function isDemoEligible(order: Order): boolean {
   if (!order.demoFlow?.scenario) return false;
   if (order.orderType === "quote_builder") {
-    return order.stage === "quote_sent" || order.stage === "po_received";
+    return (
+      order.stage === "rfq_received" ||
+      order.stage === "quote_sent" ||
+      order.stage === "po_received"
+    );
   }
   return (
     order.stage === "rfq_received" ||
@@ -513,6 +560,14 @@ export function isDemoEligible(order: Order): boolean {
 
 export function getStartStepIndex(order: Order): number {
   const steps = getDemoSteps(order);
+
+  if (order.orderType === "quote_builder") {
+    if (order.stage === "po_received") {
+      return steps.findIndex((s) => s.id === "pushed_to_mrp");
+    }
+    return 0;
+  }
+
   if (order.stage === "po_received") {
     return steps.findIndex((s) => s.id === "pushed_to_mrp");
   }
