@@ -9,6 +9,7 @@ import {
   FileText,
   PackageSearch,
   Truck,
+  Headphones,
   Plug,
   Settings,
   ChevronDown,
@@ -21,10 +22,11 @@ import { slaSuppliers } from "@/data/sla-data";
 
 const navItems = [
   { name: "Call Tracker", icon: PhoneCall, href: "/calls" },
-  { name: "Orders", icon: ShoppingCart, href: "/orders" },
+  { name: "Sales", icon: ShoppingCart, href: "/orders" },
   { name: "Procurement", icon: PackageSearch, href: "/procurement" },
   { name: "Claims", icon: FileText, href: "/claims" },
   { name: "Suppliers", icon: Truck, href: "/suppliers", expandable: true },
+  { name: "Customer Service", icon: Headphones, href: "/support" },
   { name: "Integrations", icon: Plug, href: "/integrations" },
   { name: "Settings", icon: Settings, href: "/settings" },
 ];
@@ -45,6 +47,7 @@ export default function AppSidebar({ activeItem }: AppSidebarProps) {
     if (item.href === "/procurement") return pathname.startsWith("/procurement");
     if (item.href === "/claims") return pathname.startsWith("/claims");
     if (item.href === "/suppliers") return pathname.startsWith("/suppliers");
+    if (item.href === "/support") return pathname.startsWith("/support");
     if (item.href === "/integrations") return pathname.startsWith("/integrations");
     if (item.href === "/settings") return pathname.startsWith("/settings");
     return pathname.startsWith(item.href);

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Order, Shipment, ShipmentEvent, ShipmentStatus } from "@/lib/types";
+import { apiUrl } from "@/lib/api-base";
 import ShipmentTrackingPanel, {
   ShipmentTrackingLoading,
   ShipmentTrackingEmpty,
@@ -102,7 +103,7 @@ export default function ShipmentPanel({ order }: { order: Order }) {
     setLoading(true);
     try {
       const res = await fetch(
-        `/api/shipments?orderId=${order.id}&withEvents=true`,
+        `${apiUrl("/api/shipments")}?orderId=${encodeURIComponent(order.id)}&withEvents=true`,
         { cache: "no-store" },
       );
       if (!res.ok) return;

@@ -22,6 +22,7 @@ import {
   type AttachmentKind,
 } from "@/lib/attachment-utils";
 import { parsePurchaseOrderWithFallback } from "@/lib/po-parser";
+import { apiUrl } from "@/lib/api-base";
 
 const SARAH_PROCUREMENT_VISIBLE_KEY = "hexa:procurement:sarah-visible";
 
@@ -464,8 +465,7 @@ function TaskpaneContent() {
         return;
       }
 
-      const baseUrl = window.location.origin;
-      const res = await fetch(`${baseUrl}/api/orders`, {
+      const res = await fetch(apiUrl("/api/orders"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

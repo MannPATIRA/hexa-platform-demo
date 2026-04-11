@@ -8,6 +8,7 @@ import { OrderProcessBar } from "./OrderProcessBar";
 import { useOrderDemoFlow } from "@/hooks/useOrderDemoFlow";
 import type { Order, OrderStage } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { apiUrl } from "@/lib/api-base";
 import {
   AlertTriangle,
   Calendar,
@@ -65,7 +66,7 @@ export function OrderDetailClient({ order: initialOrder, showLeftPanel = false }
 
   const handleStageChange = useCallback(async (newStage: OrderStage, data?: Partial<Order>) => {
     const payload = { stage: newStage, ...data };
-    await fetch(`/api/orders/${currentOrder.id}/stage`, {
+    await fetch(apiUrl(`/api/orders/${currentOrder.id}/stage`), {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),

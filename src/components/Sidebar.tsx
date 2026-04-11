@@ -7,6 +7,7 @@ import { useState, useCallback } from "react";
 import { Order } from "@/lib/types";
 import { Package, Trash2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { apiUrl } from "@/lib/api-base";
 
 export function Sidebar({ orders }: { orders: Order[] }) {
   const pathname = usePathname();
@@ -38,7 +39,7 @@ export function Sidebar({ orders }: { orders: Order[] }) {
     setDeleting(true);
     try {
       const ids = Array.from(selected);
-      const res = await fetch("/api/orders", {
+      const res = await fetch(apiUrl("/api/orders"), {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ids }),

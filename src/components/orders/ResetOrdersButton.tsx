@@ -4,6 +4,7 @@ import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { RotateCcw, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { apiUrl } from "@/lib/api-base";
 
 export function ResetOrdersButton() {
   const router = useRouter();
@@ -13,7 +14,7 @@ export function ResetOrdersButton() {
   const handleReset = useCallback(async () => {
     setResetting(true);
     try {
-      const res = await fetch("/api/orders/reset", { method: "POST" });
+      const res = await fetch(apiUrl("/api/orders/reset"), { method: "POST" });
       if (res.ok) {
         setConfirmOpen(false);
         router.push("/orders");

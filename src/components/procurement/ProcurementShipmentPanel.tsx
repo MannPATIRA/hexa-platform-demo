@@ -8,6 +8,7 @@ import ShipmentTrackingPanel, {
   ShipmentTrackingEmpty,
   type TrackingStage,
 } from "@/components/shipping/ShipmentTrackingPanel";
+import { apiUrl } from "@/lib/api-base";
 
 type ShipmentWithEvents = {
   shipment: Shipment;
@@ -114,7 +115,7 @@ export default function ProcurementShipmentPanel({
     setLoading(true);
     try {
       const res = await fetch(
-        `/api/shipments?poId=${poId}&withEvents=true`,
+        `${apiUrl("/api/shipments")}?poId=${encodeURIComponent(poId)}&withEvents=true`,
         { cache: "no-store" },
       );
       if (!res.ok) return;

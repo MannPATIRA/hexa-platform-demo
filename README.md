@@ -4,13 +4,29 @@ Order management platform with an Outlook add-in that captures email attachments
 
 ## Quick Start (Local Development)
 
+This repository contains the **Next.js frontend** and a sibling **`hexa-platform-api`** folder with the standalone Node API (same stack as before: Upstash Redis / in-memory, Nodemailer, etc.). Run both processes locally.
+
+**1. API (port 4000)**
+
 ```bash
+cd hexa-platform-api
 npm install
+cp .env.example .env   # optional: KV, SMTP, Graph
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) to view the platform dashboard.
-Open [http://localhost:3000/taskpane](http://localhost:3000/taskpane) to preview the Outlook add-in taskpane.
+**2. Web (port 3000)**
+
+```bash
+npm install
+cp .env.example .env.local
+# Set NEXT_PUBLIC_API_URL=http://localhost:4000
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000) for the dashboard and [http://localhost:3000/taskpane](http://localhost:3000/taskpane) for the Outlook taskpane preview.
+
+To use this frontend as its **own Git repo**, keep the root as the web app and copy or submodule `hexa-platform-api` into a separate remote repository.
 
 ## Deploying to Vercel
 
@@ -68,8 +84,9 @@ If you want to add SSO or Graph integration later:
 
 ## Tech Stack
 
-- **Next.js 14** (App Router) — platform + add-in taskpane + API routes
+- **Next.js** (App Router) — platform + Outlook taskpane UI
+- **`hexa-platform-api`** — standalone Node server ([Hono](https://hono.dev)) exposing the same `/api/*` routes as before
 - **Tailwind CSS + shadcn/ui** — UI components
 - **Office.js** — Outlook add-in SDK
-- **Vercel** — hosting
-- **In-memory store** — demo data (no database)
+- **Upstash Redis** (optional `KV_*`) or **in-memory** — order/shipment persistence on the API
+- **Vercel** — typical hosting for the frontend; run the API on any Node host (Railway, Render, Fly.io, etc.)

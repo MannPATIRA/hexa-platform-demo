@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { apiUrl } from "@/lib/api-base";
 
 interface CallDetailViewProps {
   call: CallRecord;
@@ -251,7 +252,7 @@ function CallOrderCreateModal({
     async function create() {
       try {
         const lineItems = mapExtractedToLineItems(detail.extractedItems);
-        const res = await fetch("/api/orders", {
+        const res = await fetch(apiUrl("/api/orders"), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({

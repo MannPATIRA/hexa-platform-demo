@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { apiUrl } from "@/lib/api-base";
 
 const demoSections = [
   {
@@ -48,7 +49,7 @@ export default function DemoNavigationCard() {
     setLoading(true);
     setMessage(null);
     try {
-      const res = await fetch("/api/send-demo-emails", { method: "POST" });
+      const res = await fetch(apiUrl("/api/send-demo-emails"), { method: "POST" });
       const data = await res.json();
 
       if (!res.ok) {

@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { apiUrl } from "@/lib/api-base";
 import { getOpenPOsForItem } from "@/data/procurement-data";
 import type { OpenPOStatus } from "@/lib/procurement-types";
 
@@ -62,7 +63,7 @@ export default function OpenPOsSection({ itemId }: { itemId: string }) {
     setInlineError(null);
     setSavingPoId(po.id);
     try {
-      const res = await fetch("/api/shipments", {
+      const res = await fetch(apiUrl("/api/shipments"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

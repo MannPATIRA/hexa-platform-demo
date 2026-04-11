@@ -39,6 +39,7 @@ import {
   cartItemsToLineItems,
   type CartItem,
 } from "@/lib/cart-utils";
+import { apiUrl } from "@/lib/api-base";
 
 export default function CartPage() {
   const [items, setItems] = useState<CartItem[]>([]);
@@ -110,7 +111,7 @@ export default function CartPage() {
     };
 
     try {
-      const res = await fetch("/api/orders", {
+      const res = await fetch(apiUrl("/api/orders"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),

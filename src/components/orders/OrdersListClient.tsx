@@ -78,7 +78,7 @@ type DateSort = "newest" | "oldest";
 
 export function OrdersListClient({ orders }: { orders: Order[] }) {
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [sourceFilter, setSourceFilter] = useState<string>("email");
+  const [sourceFilter, setSourceFilter] = useState<string>("all");
   const [dateSort, setDateSort] = useState<DateSort>("newest");
   const [attentionOnly, setAttentionOnly] = useState(false);
 
@@ -217,8 +217,16 @@ export function OrdersListClient({ orders }: { orders: Order[] }) {
           {filteredOrders.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
               <ListFilter size={32} className="mb-3 opacity-40" />
-              <p className="text-sm font-medium">No orders match the current filters</p>
-              <p className="mt-1 text-xs opacity-70">Try adjusting or clearing your filters</p>
+              <p className="text-sm font-medium">
+                {orders.length === 0
+                  ? "No orders to show"
+                  : "No orders match the current filters"}
+              </p>
+              <p className="mt-1 text-xs opacity-70">
+                {orders.length === 0
+                  ? "Check that the API is running and returning data."
+                  : "Try adjusting or clearing your filters."}
+              </p>
             </div>
           ) : (
             filteredOrders.map((order) => {

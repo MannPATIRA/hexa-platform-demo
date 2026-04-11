@@ -7,6 +7,7 @@ import { extractedItems } from "@/data/extractedItems";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import type { LineItem, Customer, Order } from "@/lib/types";
+import { apiUrl } from "@/lib/api-base";
 
 interface OrderCreateModalProps {
   onOrderCreated: (orderId: string) => void;
@@ -51,7 +52,7 @@ export default function OrderCreateModal({ onOrderCreated, onClose }: OrderCreat
     async function create() {
       try {
         const lineItems = mapExtractedToLineItems();
-        const res = await fetch("/api/orders", {
+        const res = await fetch(apiUrl("/api/orders"), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
