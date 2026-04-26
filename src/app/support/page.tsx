@@ -1,56 +1,60 @@
 "use client";
 
 import { Suspense } from "react";
+import { Search } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import KnowledgeOverview from "@/components/support/KnowledgeOverview";
 import TicketListClient from "@/components/support/TicketListClient";
 import { supportTickets, knowledgeBaseStats } from "@/data/support-data";
-import { CheckCircle2, Zap, BarChart3 } from "lucide-react";
 
 function SupportContent() {
   return (
     <div className="flex h-full flex-col bg-card">
-      {/* Hero header */}
-      <div className="border-b border-border px-7 py-6">
-        <h1 className="font-display text-2xl font-medium leading-none text-foreground">
-          Customer Service
-        </h1>
-        <p className="mt-1 text-[13px] text-muted-foreground">
-          AI-powered support inbox — automatically triages, responds, and escalates customer inquiries.
-        </p>
-
-        {/* Stats strip */}
-        <div className="mt-5 grid grid-cols-3 gap-4">
-          <div className="flex items-center gap-3 border border-emerald-500/20 bg-emerald-500/5 px-4 py-3">
-            <CheckCircle2 size={18} className="shrink-0 text-emerald-600" />
-            <div>
-              <p className="text-xl font-semibold tabular-nums text-foreground">
-                {knowledgeBaseStats.totalAutoResolved}%
-              </p>
-              <p className="text-[11px] text-muted-foreground">Auto-Resolved</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3 border border-primary/20 bg-primary/5 px-4 py-3">
-            <Zap size={18} className="shrink-0 text-primary" />
-            <div>
-              <p className="text-xl font-semibold tabular-nums text-foreground">
-                {knowledgeBaseStats.avgResponseTimeSec}s
-              </p>
-              <p className="text-[11px] text-muted-foreground">Avg Response</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3 border border-border bg-muted/20 px-4 py-3">
-            <BarChart3 size={18} className="shrink-0 text-muted-foreground" />
-            <div>
-              <p className="text-xl font-semibold tabular-nums text-foreground">
-                {knowledgeBaseStats.totalTicketsProcessed}
-              </p>
-              <p className="text-[11px] text-muted-foreground">Inquiries Processed</p>
-            </div>
-          </div>
+      {/* Header — Claims-style compact title + search */}
+      <div className="flex items-center justify-between border-b border-border px-7 py-4">
+        <div>
+          <h1 className="font-display text-2xl font-medium leading-none text-foreground">
+            Customer Service
+          </h1>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            AI triages, drafts, and routes inbound customer requests across email, phone, web, and portal.
+          </p>
+        </div>
+        <div className="relative">
+          <Search
+            size={13}
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+          />
+          <Input
+            placeholder="Search ticket, customer, or PO..."
+            className="h-9 w-60 border-border bg-background pl-8 text-[12px] text-muted-foreground"
+          />
         </div>
       </div>
 
-      {/* Knowledge base */}
+      {/* Thin metrics row */}
+      <div className="flex items-center gap-6 border-b border-border bg-muted/20 px-7 py-2">
+        <div className="flex items-baseline gap-1.5">
+          <span className="text-[11px] uppercase tracking-wider text-muted-foreground">Auto-Resolved</span>
+          <span className="text-[12px] font-semibold tabular-nums text-emerald-700">
+            {knowledgeBaseStats.totalAutoResolved}%
+          </span>
+        </div>
+        <div className="flex items-baseline gap-1.5">
+          <span className="text-[11px] uppercase tracking-wider text-muted-foreground">Avg Response</span>
+          <span className="text-[12px] font-semibold tabular-nums text-foreground">
+            {knowledgeBaseStats.avgResponseTimeSec}s
+          </span>
+        </div>
+        <div className="flex items-baseline gap-1.5">
+          <span className="text-[11px] uppercase tracking-wider text-muted-foreground">Processed</span>
+          <span className="text-[12px] font-semibold tabular-nums text-foreground">
+            {knowledgeBaseStats.totalTicketsProcessed}
+          </span>
+        </div>
+      </div>
+
+      {/* Knowledge base — collapsed one-liner with disclosure */}
       <KnowledgeOverview />
 
       {/* Ticket list */}
