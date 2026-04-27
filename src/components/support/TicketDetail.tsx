@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useCallback } from "react";
 import Link from "next/link";
 import { ChevronRight, CheckCircle2, ArrowUpRight, AlertTriangle, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -9,8 +10,22 @@ import AiClassificationCard from "./AiClassificationCard";
 import CustomerSnapshotCard from "./CustomerSnapshotCard";
 import FollowUpActionsPanel from "./FollowUpActionsPanel";
 import ChannelBadge from "./ChannelBadge";
-import type { SupportTicket, TicketStatus, TicketPriority } from "@/data/support-data";
-import { categoryLabels, priorityLabels, statusLabels } from "@/data/support-data";
+import StageBar from "./StageBar";
+import AgentTimeline from "./AgentTimeline";
+import type {
+  SupportTicket,
+  TicketStatus,
+  TicketPriority,
+  SupportStage,
+  LifecycleEvent,
+  LifecycleEventType,
+} from "@/data/support-data";
+import {
+  categoryLabels,
+  priorityLabels,
+  statusLabels,
+  getLifecyclePath,
+} from "@/data/support-data";
 
 const PRIORITY_BADGE: Record<TicketPriority, string> = {
   low: "border-muted-foreground/30 bg-muted/30 text-muted-foreground",
@@ -26,6 +41,10 @@ const STATUS_BADGE: Record<TicketStatus, string> = {
   resolved: "border-border bg-muted/40 text-muted-foreground",
 };
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
 interface TicketDetailProps {
   ticket: SupportTicket;
 }
@@ -34,6 +53,115 @@ export default function TicketDetail({ ticket }: TicketDetailProps) {
   const isResolved = ticket.status === "auto_resolved";
   const isEscalated = ticket.status === "escalated";
   const isAwaiting = ticket.status === "awaiting_approval";
+
+  const path = getLifecyclePath(ticket.status);
+
+  const [stage, setStage] = useState<SupportStage>(ticket.currentStage);
+  const [events, setEvents] = useState<LifecycleEvent[]>(ticket.lifecycleEvents);
+  const [isCascading, setIsCascading] = useState(false);
+  const [draftSent, setDraftSent] = useState(false);
+  const [draftRejected, setDraftRejected] = useState(false);
+  const [sentBody, setSentBody] = useState<string | null>(null);
+
+  const appendEvent = useCallback(
+    (type: LifecycleEventType, title: string, detail: string) => {
+      setEvents((prev) => [
+        ...prev,
+        {
+          id: `${ticket.id}-rt-${prev.length + 1}-${Date.now()}`,
+          occurredAt: new Date().toISOString(),
+          type,
+          title,
+          detail,
+        },
+      ]);
+    },
+    [ticket.id],
+  );
+
+  const approveAndSendCascade = useCallback(async (body: string) => {
+    if (isCascading || draftSent) return;
+    setIsCascading(true);
+    setDraftSent(true);
+    setSentBody(body);
+
+    appendEvent(
+      "draft_approved",
+      "Draft approved by James Morrison",
+      "One-click approval; reply dispatching.",
+    );
+    await sleep(500);
+
+    appendEvent("sent", `Reply sent to ${ticket.customer.email}`, "Reply dispatched.");
+    setStage("sent");
+    await sleep(900);
+
+    appendEvent(
+      "follow_up_queued",
+      "Follow-up actions fired",
+      `${ticket.followUpActions.length} cross-team action${ticket.followUpActions.length === 1 ? "" : "s"} queued.`,
+    );
+    setStage("follow_ups_fired");
+    await sleep(900);
+
+    appendEvent(
+      "customer_replied",
+      "Customer acknowledged",
+      "Customer confirmed resolution — no further questions.",
+    );
+    setStage("customer_acknowledged");
+    await sleep(900);
+
+    appendEvent("resolved", "Ticket resolved", "Closed and archived.");
+    setStage("resolved");
+    setIsCascading(false);
+  }, [
+    isCascading,
+    draftSent,
+    appendEvent,
+    ticket.customer.email,
+    ticket.followUpActions.length,
+  ]);
+
+  const escalate = useCallback(() => {
+    if (isCascading || draftRejected) return;
+    setDraftRejected(true);
+    appendEvent(
+      "draft_rejected",
+      "Draft rejected — escalating",
+      "Reviewer rejected the draft; routing to human owner.",
+    );
+    appendEvent(
+      "escalated_to_owner",
+      ticket.assignedTo
+        ? `Escalated to ${ticket.assignedTo.name}`
+        : "Escalated to human owner",
+      "Owner has full AI context and conversation thread.",
+    );
+    setStage("routed");
+  }, [isCascading, draftRejected, appendEvent, ticket.assignedTo]);
+
+  const handleFollowUpEvent = useCallback(
+    (team: string, action: string, kind: "queued" | "done" | "skipped") => {
+      if (kind === "queued") {
+        appendEvent(
+          "follow_up_queued",
+          `${team} action queued`,
+          action,
+        );
+      } else if (kind === "done") {
+        appendEvent(
+          "follow_up_done",
+          `${team} action marked done`,
+          action,
+        );
+      }
+    },
+    [appendEvent],
+  );
+
+  // Effective path may shift to escalation if the user rejects the draft
+  const effectivePath = draftRejected ? "escalation" : path;
 
   return (
     <div className="flex h-full flex-col">
@@ -97,15 +225,28 @@ export default function TicketDetail({ ticket }: TicketDetailProps) {
         </div>
       </div>
 
-      {/* Two-pane workspace — narrow conversation, wide action panel */}
+      {/* Stage bar */}
+      <div className="border-b border-border bg-muted/10 px-7 py-3">
+        <StageBar currentStage={stage} path={effectivePath} compact />
+      </div>
+
+      {/* Two-pane workspace */}
       <div className="flex flex-1 min-h-0">
-        {/* Left — Conversation (narrower) */}
+        {/* Left — Conversation */}
         <div className="w-[480px] shrink-0 overflow-y-auto bg-card border-r border-border">
           <div className="px-5 pb-10 pt-5 space-y-4">
-            <ConversationThread ticket={ticket} />
+            <ConversationThread
+              ticket={ticket}
+              onApproveSend={approveAndSendCascade}
+              onEscalate={escalate}
+              isCascading={isCascading}
+              draftSent={draftSent}
+              draftRejected={draftRejected}
+              currentStage={stage}
+              sentBody={sentBody}
+            />
 
-            {/* Escalation reason */}
-            {isEscalated && ticket.escalationReason && (
+            {(isEscalated || draftRejected) && ticket.escalationReason && (
               <div className="border border-red-500/30 bg-red-500/5 p-4">
                 <h4 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-red-700">
                   Escalation Reason
@@ -116,8 +257,7 @@ export default function TicketDetail({ ticket }: TicketDetailProps) {
               </div>
             )}
 
-            {/* AI Context Summary (escalated) */}
-            {isEscalated && ticket.aiContextSummary && ticket.aiContextSummary.length > 0 && (
+            {(isEscalated || draftRejected) && ticket.aiContextSummary && ticket.aiContextSummary.length > 0 && (
               <div className="border border-border bg-card p-4">
                 <h4 className="mb-2.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
                   Context Brief
@@ -135,14 +275,18 @@ export default function TicketDetail({ ticket }: TicketDetailProps) {
           </div>
         </div>
 
-        {/* Right — Action Workspace (wider) */}
+        {/* Right — Action Workspace */}
         <aside className="flex-1 min-w-0 bg-muted/10 overflow-y-auto">
           <div className="px-6 py-6 space-y-4 max-w-[860px]">
             <div className="grid grid-cols-2 gap-4">
               <AiClassificationCard classification={ticket.classification} />
               <CustomerSnapshotCard ticket={ticket} />
             </div>
-            <FollowUpActionsPanel actions={ticket.followUpActions} />
+            <AgentTimeline events={events} />
+            <FollowUpActionsPanel
+              actions={ticket.followUpActions}
+              onActionEvent={handleFollowUpEvent}
+            />
             <DataSourceCards sources={ticket.dataSources} />
           </div>
         </aside>

@@ -19,15 +19,30 @@ const TEAM_STYLE: Record<FollowUpTeam, string> = {
 
 interface FollowUpActionsPanelProps {
   actions: FollowUpAction[];
+  onActionEvent?: (
+    team: string,
+    action: string,
+    kind: "queued" | "done" | "skipped",
+  ) => void;
 }
 
-export default function FollowUpActionsPanel({ actions }: FollowUpActionsPanelProps) {
+export default function FollowUpActionsPanel({
+  actions,
+  onActionEvent,
+}: FollowUpActionsPanelProps) {
   const [statusMap, setStatusMap] = useState<Record<string, FollowUpStatus>>(
     () => Object.fromEntries(actions.map((a) => [a.id, a.status])),
   );
 
-  const setStatus = (id: string, status: FollowUpStatus) => {
+  const setStatus = (
+    id: string,
+    status: FollowUpStatus,
+    action: FollowUpAction,
+  ) => {
     setStatusMap((prev) => ({ ...prev, [id]: status }));
+    if (status === "queued" || status === "done" || status === "skipped") {
+      onActionEvent?.(action.team, action.action, status);
+    }
   };
 
   const counts = useMemo(() => {
@@ -109,7 +124,7 @@ export default function FollowUpActionsPanel({ actions }: FollowUpActionsPanelPr
               <div className="shrink-0 flex items-center gap-1.5">
                 <button
                   type="button"
-                  onClick={() => setStatus(a.id, isQueued ? "suggested" : "queued")}
+                  onClick={() => setStatus(a.id, isQueued ? "suggested" : "queued", a)}
                   className={cn(
                     "inline-flex items-center gap-1 border px-2 py-1 text-[10px] font-semibold transition-colors",
                     isQueued
@@ -122,7 +137,7 @@ export default function FollowUpActionsPanel({ actions }: FollowUpActionsPanelPr
                 </button>
                 <button
                   type="button"
-                  onClick={() => setStatus(a.id, isDone ? "suggested" : "done")}
+                  onClick={() => setStatus(a.id, isDone ? "suggested" : "done", a)}
                   className={cn(
                     "inline-flex items-center gap-1 border px-2 py-1 text-[10px] font-semibold transition-colors",
                     isDone
@@ -135,7 +150,7 @@ export default function FollowUpActionsPanel({ actions }: FollowUpActionsPanelPr
                 </button>
                 <button
                   type="button"
-                  onClick={() => setStatus(a.id, isSkipped ? "suggested" : "skipped")}
+                  onClick={() => setStatus(a.id, isSkipped ? "suggested" : "skipped", a)}
                   className={cn(
                     "inline-flex items-center gap-1 border px-2 py-1 text-[10px] font-semibold transition-colors",
                     isSkipped

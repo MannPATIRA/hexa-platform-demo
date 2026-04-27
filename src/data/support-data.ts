@@ -33,6 +33,100 @@ export type FollowUpTeam =
   | "Finance"
   | "QC";
 
+// ─── Lifecycle stages ────────────────────────────────────────────────────────
+
+export const SUPPORT_STAGES = [
+  "received",
+  "classified",
+  "grounded",
+  "drafted",
+  "routed",
+  "sent",
+  "follow_ups_fired",
+  "customer_acknowledged",
+  "resolved",
+] as const;
+
+export type SupportStage = (typeof SUPPORT_STAGES)[number];
+
+export type LifecyclePath = "auto" | "approval" | "escalation";
+
+export type LifecycleEventType =
+  | "received"
+  | "classified"
+  | "grounded"
+  | "drafted"
+  | "auto_routed"
+  | "approval_requested"
+  | "escalated_to_owner"
+  | "draft_approved"
+  | "draft_edited"
+  | "draft_rejected"
+  | "sent"
+  | "follow_up_queued"
+  | "follow_up_done"
+  | "customer_replied"
+  | "resolved";
+
+export interface LifecycleEvent {
+  id: string;
+  occurredAt: string;
+  type: LifecycleEventType;
+  title: string;
+  detail: string;
+}
+
+export const stageLabels: Record<SupportStage, string> = {
+  received: "Received",
+  classified: "Classified",
+  grounded: "Grounded",
+  drafted: "Drafted",
+  routed: "Routed",
+  sent: "Sent",
+  follow_ups_fired: "Follow-ups Fired",
+  customer_acknowledged: "Customer Acknowledged",
+  resolved: "Resolved",
+};
+
+export const stageShortLabels: Record<SupportStage, string> = {
+  received: "Received",
+  classified: "Classified",
+  grounded: "Grounded",
+  drafted: "Drafted",
+  routed: "Routed",
+  sent: "Sent",
+  follow_ups_fired: "Follow-ups",
+  customer_acknowledged: "Acknowledged",
+  resolved: "Resolved",
+};
+
+export function getLifecyclePath(status: TicketStatus): LifecyclePath {
+  switch (status) {
+    case "auto_resolved":
+      return "auto";
+    case "awaiting_approval":
+      return "approval";
+    case "escalated":
+    case "in_progress":
+      return "escalation";
+    case "resolved":
+      return "approval";
+  }
+}
+
+export function getInitialStage(status: TicketStatus): SupportStage {
+  switch (status) {
+    case "auto_resolved":
+      return "resolved";
+    case "awaiting_approval":
+    case "escalated":
+    case "in_progress":
+      return "routed";
+    case "resolved":
+      return "resolved";
+  }
+}
+
 export interface FollowUpAction {
   id: string;
   team: FollowUpTeam;
@@ -106,6 +200,8 @@ export interface SupportTicket {
   responseTimeSec: number | null;
   createdAt: string;
   resolvedAt: string | null;
+  currentStage: SupportStage;
+  lifecycleEvents: LifecycleEvent[];
 }
 
 export interface KnowledgeSource {
@@ -221,7 +317,9 @@ export const sentimentLabels: Record<CustomerSentiment, string> = {
 
 // ─── Mock Tickets ────────────────────────────────────────────────────────────
 
-export const supportTickets: SupportTicket[] = [
+type SupportTicketBase = Omit<SupportTicket, "currentStage" | "lifecycleEvents">;
+
+const supportTicketsBase: SupportTicketBase[] = [
   // ── Auto-Resolved (high confidence ≥ 0.9) ─────────────────────────────────
   {
     id: "tkt-001",
@@ -1207,6 +1305,129 @@ export const supportTickets: SupportTicket[] = [
     resolvedAt: null,
   },
 ];
+
+// ─── Lifecycle event factory ─────────────────────────────────────────────────
+
+function plusSec(iso: string, seconds: number): string {
+  return new Date(new Date(iso).getTime() + seconds * 1000).toISOString();
+}
+
+function buildLifecycleEvents(t: SupportTicketBase): LifecycleEvent[] {
+  const start = t.createdAt;
+  const channelLabel = channelLabels[t.channel];
+  const confPct = Math.round(t.classification.confidence * 100);
+  const categoryLabel = categoryLabels[t.classification.category];
+  const path = getLifecyclePath(t.status);
+
+  const events: LifecycleEvent[] = [
+    {
+      id: `${t.id}-ev-1`,
+      occurredAt: start,
+      type: "received",
+      title: `Inbound captured via ${channelLabel}`,
+      detail: `Routed into the support inbox from ${t.customer.name} at ${t.customer.company}.`,
+    },
+    {
+      id: `${t.id}-ev-2`,
+      occurredAt: plusSec(start, 4),
+      type: "classified",
+      title: `Classified as ${categoryLabel}`,
+      detail: `${confPct}% confidence — ${t.classification.reasoning}`,
+    },
+    {
+      id: `${t.id}-ev-3`,
+      occurredAt: plusSec(start, 11),
+      type: "grounded",
+      title: "Grounded in ERP",
+      detail:
+        t.dataSources.length > 0
+          ? `Pulled context from ${t.dataSources.map((d) => d.module).join(", ")}.`
+          : "No structured ERP context required for this request.",
+    },
+    {
+      id: `${t.id}-ev-4`,
+      occurredAt: plusSec(start, 19),
+      type: "drafted",
+      title:
+        path === "escalation" ? "AI brief prepared" : "AI reply drafted",
+      detail:
+        path === "escalation"
+          ? "Outside-SOP signal detected — assembled context brief instead of customer-facing reply."
+          : `Draft reply generated and grounded against ${t.dataSources.length} source${t.dataSources.length === 1 ? "" : "s"}.`,
+    },
+  ];
+
+  if (path === "auto") {
+    events.push(
+      {
+        id: `${t.id}-ev-5`,
+        occurredAt: plusSec(start, 24),
+        type: "auto_routed",
+        title: "Auto-send approved",
+        detail: `Confidence ${confPct}% \u2265 90% threshold — clear to dispatch without human review.`,
+      },
+      {
+        id: `${t.id}-ev-6`,
+        occurredAt: plusSec(start, 29),
+        type: "sent",
+        title: `Reply sent to ${t.customer.email}`,
+        detail: t.responseTimeSec
+          ? `Response time ${t.responseTimeSec}s end-to-end.`
+          : "Reply dispatched.",
+      },
+      {
+        id: `${t.id}-ev-7`,
+        occurredAt: plusSec(start, 60),
+        type: "resolved",
+        title: "Ticket resolved",
+        detail: "No human intervention required. Closed as auto-resolved.",
+      },
+    );
+  } else if (path === "approval") {
+    events.push({
+      id: `${t.id}-ev-5`,
+      occurredAt: plusSec(start, 26),
+      type: "approval_requested",
+      title: "Held for human approval",
+      detail: `Confidence ${confPct}% in the 70\u201390% band — draft queued for one-click approval.`,
+    });
+  } else {
+    events.push({
+      id: `${t.id}-ev-5`,
+      occurredAt: plusSec(start, 26),
+      type: "escalated_to_owner",
+      title: t.assignedTo
+        ? `Escalated to ${t.assignedTo.name}`
+        : "Escalated to human owner",
+      detail:
+        t.escalationReason ??
+        `Confidence ${confPct}% below threshold — routed to owner with full AI context.`,
+    });
+  }
+
+  // For in_progress tickets, surface that the human is actively handling it
+  // by emitting a follow-up queued event for any already-queued action.
+  if (t.status === "in_progress") {
+    const queued = t.followUpActions.find((a) => a.status === "queued");
+    if (queued) {
+      events.push({
+        id: `${t.id}-ev-6`,
+        occurredAt: plusSec(start, 60),
+        type: "follow_up_queued",
+        title: `${queued.team} action queued`,
+        detail: queued.action,
+      });
+    }
+  }
+
+  return events;
+}
+
+export const supportTickets: SupportTicket[] = supportTicketsBase.map((t) => ({
+  ...t,
+  currentStage: getInitialStage(t.status),
+  lifecycleEvents: buildLifecycleEvents(t),
+}));
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
