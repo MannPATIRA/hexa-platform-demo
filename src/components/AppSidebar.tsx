@@ -52,8 +52,8 @@ const navItems: NavItem[] = [
     icon: Wallet,
     expandable: true,
     children: [
-      { name: "Accounts Payable", href: "/finance/payable", icon: FileInput },
-      { name: "Accounts Receivable", href: "/finance/receivable", icon: FileOutput },
+      { name: "Accounts Payable", href: "/finance/payable", icon: FileOutput },
+      { name: "Accounts Receivable", href: "/finance/receivable", icon: FileInput },
     ],
   },
   { name: "Customer Service", icon: Headphones, href: "/support" },
