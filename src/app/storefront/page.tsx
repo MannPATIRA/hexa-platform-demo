@@ -14,47 +14,56 @@ import {
   Headphones,
   Clock,
   ShieldCheck,
-  Package,
   Mail,
-  Target,
+  Hexagon,
+  CircleDot,
+  Circle,
+  Anchor,
+  Ruler,
+  Drill,
+  Sparkles,
   Wrench,
-  Gauge,
-  Droplets,
-  Zap,
-  Settings,
-  Hammer,
 } from "lucide-react";
 import StorefrontHeader from "@/components/storefront/StorefrontHeader";
 
-const FEATURED_SKUS = ["BB-6205", "VA-200", "HB-M10-40", "PI-CEN-6"];
+const FEATURED_SKUS = ["FB-M8X25-1090-ZN", "SHCS-M10X40-1290-BO", "WS-F436-12-HDG", "TC-A325-34X2-ASM"];
 
 const NAV_ITEMS = [
   "All Products",
-  "Bearings",
-  "Fasteners",
-  "Valves",
-  "Pipe & Plumbing",
-  "Electrical",
-  "Safety",
-  "Pumps",
-  "Hardware",
+  "Hex Bolts & Cap Screws",
+  "Socket Head Screws",
+  "Nuts",
+  "Washers",
+  "Anchors",
+  "Threaded Rod & Studs",
+  "Self-Tappers",
+  "Specialty",
 ];
 
 const CATEGORIES: { name: string; icon: LucideIcon; catalogKey: string; image: string }[] = [
-  { name: "Bearings", icon: Target, catalogKey: "Bearings", image: "/products/cat-bearings.jpg" },
-  { name: "Fasteners", icon: Wrench, catalogKey: "Fasteners", image: "/products/cat-fasteners.jpg" },
-  { name: "Valves", icon: Gauge, catalogKey: "Valves", image: "/products/cat-valves.jpg" },
-  { name: "Pipe & Plumbing", icon: Droplets, catalogKey: "Pipe & Plumbing", image: "/products/cat-plumbing.jpg" },
-  { name: "Electrical", icon: Zap, catalogKey: "Electrical", image: "/products/cat-electrical.jpg" },
-  { name: "Safety & PPE", icon: ShieldCheck, catalogKey: "Safety", image: "/products/cat-safety.jpg" },
-  { name: "Pumps & Impellers", icon: Settings, catalogKey: "Pumps", image: "/products/cat-pumps.jpg" },
-  { name: "Hardware", icon: Hammer, catalogKey: "Hardware", image: "/products/cat-hardware.jpg" },
+  { name: "Hex Bolts & Cap Screws", icon: Hexagon, catalogKey: "Hex Bolts & Cap Screws", image: "/products/cat-fasteners.jpg" },
+  { name: "Socket Head Screws", icon: CircleDot, catalogKey: "Socket Head Screws", image: "/products/cat-fasteners.jpg" },
+  { name: "Nuts", icon: Hexagon, catalogKey: "Nuts", image: "/products/cat-fasteners.jpg" },
+  { name: "Washers", icon: Circle, catalogKey: "Washers", image: "/products/cat-hardware.jpg" },
+  { name: "Anchors", icon: Anchor, catalogKey: "Anchors", image: "/products/cat-hardware.jpg" },
+  { name: "Threaded Rod & Studs", icon: Ruler, catalogKey: "Threaded Rod & Studs", image: "/products/cat-fasteners.jpg" },
+  { name: "Self-Tappers", icon: Drill, catalogKey: "Self-Tappers", image: "/products/cat-fasteners.jpg" },
+  { name: "Specialty", icon: Sparkles, catalogKey: "Specialty", image: "/products/cat-hardware.jpg" },
 ];
 
 const PRODUCT_IMAGE_MAP: Record<string, string> = {
+  "Hex Bolts & Cap Screws": "/products/bolts-fasteners.jpg",
+  "Socket Head Screws": "/products/bolts-fasteners.jpg",
+  Nuts: "/products/bolts-fasteners.jpg",
+  Washers: "/products/bolts-fasteners.jpg",
+  Anchors: "/products/bolts-fasteners.jpg",
+  "Threaded Rod & Studs": "/products/bolts-fasteners.jpg",
+  "Self-Tappers": "/products/bolts-fasteners.jpg",
+  Specialty: "/products/bolts-fasteners.jpg",
+  // Legacy categories — retained so non-fastener catalog entries used elsewhere still render with a sensible fallback.
+  Fasteners: "/products/bolts-fasteners.jpg",
   Bearings: "/products/bearing.jpg",
   Flanges: "/products/pipe-fittings.jpg",
-  Fasteners: "/products/bolts-fasteners.jpg",
   Valves: "/products/valve-brass.jpg",
   "Seals & Gaskets": "/products/pipe-fittings.jpg",
   "Pipe & Plumbing": "/products/pipe-fittings.jpg",
@@ -67,6 +76,7 @@ const PRODUCT_IMAGE_MAP: Record<string, string> = {
   Safety: "/products/hard-hat.jpg",
   General: "/products/bolts-fasteners.jpg",
 };
+
 
 function ProductCard({ product }: { product: SkuCatalogEntry }) {
   const imageSrc = PRODUCT_IMAGE_MAP[product.category] || "/products/bolts-fasteners.jpg";
@@ -224,15 +234,16 @@ export default function StorefrontPage() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
             <div className="max-w-2xl">
               <p className="text-[#7EB0E0] text-sm font-semibold uppercase tracking-wider mb-4">
-                Trusted by 2,000+ businesses
+                Trusted by 2,000+ OEM &amp; industrial accounts
               </p>
               <h1 className="text-4xl md:text-5xl font-bold text-white leading-tight mb-5">
-                Your Trusted Source for Industrial Parts &amp; Equipment
+                Industrial Fasteners for OEM Production &amp; MRO
               </h1>
               <p className="text-lg md:text-xl text-white/70 mb-8 leading-relaxed">
-                From bearings and fasteners to valves and pumps — over 150
-                products in stock and ready to ship. Same-day shipping on
-                orders placed before 2 PM CT.
+                From standard hex bolts and SHCS to A325 structural assemblies
+                and Huck blind rivets — 12,000+ SKUs in stock with mill certs,
+                PPAP packages, and Kanban/VMI replenishment. Same-day shipping
+                on orders placed before 2 PM CT.
               </p>
               <div className="flex flex-wrap gap-4">
                 <a
@@ -437,14 +448,14 @@ export default function StorefrontPage() {
               </h3>
               <ul className="space-y-2.5 text-sm">
                 {[
-                  "Bearings",
-                  "Fasteners",
-                  "Valves",
-                  "Pipe & Plumbing",
-                  "Electrical",
-                  "Safety & PPE",
-                  "Pumps",
-                  "Hardware",
+                  "Hex Bolts & Cap Screws",
+                  "Socket Head Screws",
+                  "Nuts",
+                  "Washers",
+                  "Anchors",
+                  "Threaded Rod & Studs",
+                  "Self-Tappers",
+                  "Specialty Fasteners",
                 ].map((item) => (
                   <li key={item}>
                     <a
