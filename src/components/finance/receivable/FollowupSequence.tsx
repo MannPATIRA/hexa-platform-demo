@@ -10,9 +10,10 @@ import { cn } from "@/lib/utils";
 interface FollowupSequenceProps {
   attempts: FollowupAttempt[];
   expandedAttemptId?: string;
+  onOpenVoiceCall?: (attempt: FollowupAttempt) => void;
 }
 
-export default function FollowupSequence({ attempts, expandedAttemptId }: FollowupSequenceProps) {
+export default function FollowupSequence({ attempts, expandedAttemptId, onOpenVoiceCall }: FollowupSequenceProps) {
   return (
     <div className="border border-border bg-card shadow-sm">
       <div className="border-b border-border px-5 py-3">
@@ -47,7 +48,11 @@ export default function FollowupSequence({ attempts, expandedAttemptId }: Follow
             {attempt.channel === "email" ? (
               <EmailRow attempt={attempt} defaultOpen={attempt.id === expandedAttemptId} />
             ) : (
-              <VoiceCallCard attempt={attempt} defaultOpen={attempt.id === expandedAttemptId} />
+              <VoiceCallCard
+                attempt={attempt}
+                defaultOpen={attempt.id === expandedAttemptId}
+                onViewDetails={onOpenVoiceCall ? () => onOpenVoiceCall(attempt) : undefined}
+              />
             )}
           </motion.li>
         ))}

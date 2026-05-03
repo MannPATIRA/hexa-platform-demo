@@ -13,6 +13,12 @@ import {
   Play,
   Flag,
   Inbox,
+  Waves,
+  Headphones,
+  Phone,
+  Smile,
+  Meh,
+  Frown,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -21,12 +27,14 @@ import {
   type ARDemoStage,
   type ARInvoice,
   type AgentEvent,
+  type FollowupAttempt,
 } from "@/lib/finance-types";
 import { getARCustomer, formatMoney } from "@/data/finance-data";
 import InvoicePreview from "@/components/finance/shared/InvoicePreview";
 import EmailDraftPanel from "@/components/finance/shared/EmailDraftPanel";
 import AgentTimeline from "@/components/finance/shared/AgentTimeline";
 import FollowupSequence from "./FollowupSequence";
+import CallDetailSidePane from "./CallDetailSidePane";
 import { cn } from "@/lib/utils";
 
 interface ARInvoiceWorkspaceProps {
@@ -67,11 +75,34 @@ export default function ARInvoiceWorkspace({ invoice }: ARInvoiceWorkspaceProps)
   const [extraEvents, setExtraEvents] = useState<AgentEvent[]>([]);
   const [emailOpen, setEmailOpen] = useState(false);
   const [emailKind, setEmailKind] = useState<"first" | "second">("first");
+  const [activeVoiceCall, setActiveVoiceCall] = useState<FollowupAttempt | null>(null);
 
   const allEvents = useMemo(
     () => [...invoice.agentTimeline, ...extraEvents],
     [invoice.agentTimeline, extraEvents],
   );
+
+  const latestVoiceCall = useMemo(() => {
+    const voiceCalls = invoice.followups.filter(
+      (f) => f.channel === "voice" && (f.voiceTranscript?.length ?? 0) > 0,
+    );
+    if (voiceCalls.length === 0) return null;
+    return voiceCalls.reduce((latest, current) =>
+      new Date(current.occurredAt).getTime() > new Date(latest.occurredAt).getTime()
+        ? current
+        : latest,
+    );
+  }, [invoice.followups]);
+
+  function handlePlaceCallClick() {
+    if (latestVoiceCall) {
+      setActiveVoiceCall(latestVoiceCall);
+      return;
+    }
+    if (stage === "second_reminder" || stage === "promise_broken") {
+      advanceStage();
+    }
+  }
 
   function appendEvent(ev: Omit<AgentEvent, "id">) {
     setExtraEvents((prev) => [
@@ -246,9 +277,19 @@ export default function ARInvoiceWorkspace({ invoice }: ARInvoiceWorkspaceProps)
         </div>
 
         <div className="lg:col-span-7 space-y-5">
+          {latestVoiceCall && (
+            <VoiceCallHighlight
+              attempt={latestVoiceCall}
+              onOpen={() => setActiveVoiceCall(latestVoiceCall)}
+            />
+          )}
+
           <SLAPanel invoice={invoice} />
 
-          <FollowupSequence attempts={invoice.followups} />
+          <FollowupSequence
+            attempts={invoice.followups}
+            onOpenVoiceCall={setActiveVoiceCall}
+          />
 
           <AgentTimeline events={allEvents} />
 
@@ -259,6 +300,9 @@ export default function ARInvoiceWorkspace({ invoice }: ARInvoiceWorkspaceProps)
               setEmailKind(stage === "approaching_due" ? "first" : "second");
               setEmailOpen(true);
             }}
+            onPlaceCall={handlePlaceCallClick}
+            hasRecentCall={!!latestVoiceCall}
+            recentCallDuration={latestVoiceCall?.voiceDurationSeconds}
           />
         </div>
       </div>
@@ -276,6 +320,14 @@ export default function ARInvoiceWorkspace({ invoice }: ARInvoiceWorkspaceProps)
         ]}
         onSend={handleReminderSent}
         title={`Reminder — ${invoice.invoiceNumber}`}
+      />
+
+      <CallDetailSidePane
+        attempt={activeVoiceCall}
+        customerName={invoice.customerName}
+        customerSubtitle={customer?.contactName}
+        invoiceLabel={invoice.invoiceNumber}
+        onClose={() => setActiveVoiceCall(null)}
       />
     </div>
   );
@@ -453,12 +505,22 @@ function ActionsCard({
   stage,
   onNext,
   onTriggerEmail,
+  onPlaceCall,
+  hasRecentCall,
+  recentCallDuration,
 }: {
   stage: ARDemoStage;
   onNext: () => void;
   onTriggerEmail: () => void;
+  onPlaceCall: () => void;
+  hasRecentCall: boolean;
+  recentCallDuration?: number;
 }) {
   const nextLabel = NEXT_STAGE_LABEL[stage];
+  const callDurationLabel = recentCallDuration
+    ? `${Math.floor(recentCallDuration / 60)}m ${recentCallDuration % 60}s`
+    : null;
+
   return (
     <div className="border border-border bg-card p-4 shadow-sm">
       <div className="mb-3 flex items-center gap-2">
@@ -476,15 +538,53 @@ function ActionsCard({
           {nextLabel && <ArrowRight className="h-4 w-4" />}
         </Button>
       </motion.div>
-      <div className="mt-3 grid grid-cols-4 gap-2">
-        <Button variant="outline" size="sm" onClick={onTriggerEmail} className="gap-1.5">
-          <Mail className="h-3.5 w-3.5" />
-          Email
+
+      <div className="mt-4 mb-2 flex items-center gap-2">
+        <Phone size={11} className="text-primary/70" />
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+          Customer outreach
+        </p>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <Button
+          variant="outline"
+          onClick={onTriggerEmail}
+          className="h-12 justify-start gap-2.5 px-3 text-left"
+        >
+          <div className="flex h-7 w-7 shrink-0 items-center justify-center border border-border bg-card">
+            <Mail className="h-3.5 w-3.5 text-foreground/70" />
+          </div>
+          <div className="flex min-w-0 flex-col leading-tight">
+            <span className="text-[12.5px] font-semibold text-foreground">Email</span>
+            <span className="text-[10.5px] text-muted-foreground">Send reminder</span>
+          </div>
         </Button>
-        <Button variant="outline" size="sm" className="gap-1.5">
-          <PhoneCall className="h-3.5 w-3.5" />
-          Call
+        <Button
+          variant="outline"
+          onClick={onPlaceCall}
+          className="relative h-12 justify-start gap-2.5 overflow-hidden border-primary/50 bg-primary/8 px-3 text-left text-primary transition-all hover:border-primary hover:bg-primary/15 hover:text-primary active:scale-[0.99]"
+        >
+          <div className="relative flex h-7 w-7 shrink-0 items-center justify-center border border-primary/40 bg-primary/15 text-primary">
+            <Waves className="h-3.5 w-3.5" />
+            <span className="absolute -right-0.5 -top-0.5 flex h-2 w-2">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-60" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
+            </span>
+          </div>
+          <div className="flex min-w-0 flex-col leading-tight">
+            <span className="text-[12.5px] font-semibold text-primary">
+              {hasRecentCall ? "Open last call" : "Place AI voice call"}
+            </span>
+            <span className="text-[10.5px] text-primary/70">
+              {hasRecentCall && callDurationLabel
+                ? `Listen · ${callDurationLabel}`
+                : "Live AI voice agent"}
+            </span>
+          </div>
         </Button>
+      </div>
+
+      <div className="mt-2 grid grid-cols-2 gap-2">
         <Button variant="outline" size="sm" className="gap-1.5">
           <ShieldCheck className="h-3.5 w-3.5" />
           Mark paid
@@ -495,6 +595,93 @@ function ActionsCard({
         </Button>
       </div>
     </div>
+  );
+}
+
+function VoiceCallHighlight({
+  attempt,
+  onOpen,
+}: {
+  attempt: FollowupAttempt;
+  onOpen: () => void;
+}) {
+  const duration = attempt.voiceDurationSeconds
+    ? `${Math.floor(attempt.voiceDurationSeconds / 60)}m ${attempt.voiceDurationSeconds % 60}s`
+    : null;
+
+  const sentiment = attempt.voiceSentiment;
+  const SentimentIcon =
+    sentiment === "positive" ? Smile : sentiment === "negative" ? Frown : Meh;
+  const sentimentColor =
+    sentiment === "positive"
+      ? "text-emerald-700"
+      : sentiment === "negative"
+      ? "text-red-700"
+      : "text-amber-700";
+
+  const date = new Date(attempt.occurredAt).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+  });
+
+  return (
+    <motion.button
+      type="button"
+      onClick={onOpen}
+      whileHover={{ y: -1 }}
+      whileTap={{ scale: 0.995 }}
+      className="group relative flex w-full items-center gap-4 overflow-hidden border border-primary/40 bg-gradient-to-r from-primary/12 via-primary/6 to-transparent px-5 py-4 text-left shadow-sm transition-colors hover:border-primary hover:from-primary/18 hover:via-primary/10"
+    >
+      <span
+        aria-hidden
+        className="absolute inset-y-0 left-0 w-[3px] bg-gradient-to-b from-primary via-primary/70 to-primary/20"
+      />
+
+      <div className="relative flex h-11 w-11 shrink-0 items-center justify-center border border-primary/40 bg-primary/15 text-primary">
+        <Phone size={16} strokeWidth={2.2} />
+        <span className="absolute -right-1 -top-1 flex h-2.5 w-2.5">
+          <motion.span
+            className="absolute inline-flex h-full w-full rounded-full bg-primary"
+            animate={{ opacity: [0.6, 0, 0.6], scale: [1, 1.9, 1] }}
+            transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+          />
+          <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-primary" />
+        </span>
+      </div>
+
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-primary/80">
+            Voice agent call
+          </span>
+          <span className="text-[11px] text-muted-foreground">· {date}</span>
+          {duration && (
+            <span className="font-mono text-[11px] text-muted-foreground">
+              · {duration}
+            </span>
+          )}
+          {sentiment && (
+            <span
+              className={cn(
+                "inline-flex items-center gap-1 text-[11px] font-medium",
+                sentimentColor,
+              )}
+            >
+              <SentimentIcon size={11} />
+              {sentiment}
+            </span>
+          )}
+        </div>
+        <p className="mt-1 line-clamp-1 text-[13px] font-medium text-foreground/90">
+          {attempt.voiceOutcomeSummary ?? "AI voice agent reached the customer"}
+        </p>
+      </div>
+
+      <div className="ml-2 flex shrink-0 items-center gap-2 border border-primary/40 bg-primary px-3 py-2 text-[12px] font-semibold text-primary-foreground shadow-sm transition-transform group-hover:translate-x-0.5">
+        <Headphones size={12} strokeWidth={2.4} />
+        Listen &amp; review
+      </div>
+    </motion.button>
   );
 }
 
