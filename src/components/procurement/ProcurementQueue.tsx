@@ -28,7 +28,6 @@ import {
 } from "@/data/procurement-data";
 import type { ProcurementItem, ProcurementStatus, ProcurementPriority } from "@/lib/procurement-types";
 import ItemDetailPanel from "./ItemDetailPanel";
-import ManualRequestDemoPanel from "./ManualRequestDemoPanel";
 import ERPScanConfig from "./ERPScanConfig";
 import EngineeringRequestForm from "./EngineeringRequestForm";
 import { cn } from "@/lib/utils";
@@ -68,12 +67,6 @@ const priorityDotColor: Record<ProcurementPriority, string> = {
 const NEEDS_ATTENTION_STATUSES: ProcurementStatus[] = ["flagged", "quotes_received"];
 type DateSort = "newest" | "oldest";
 const SARAH_PROCUREMENT_ITEM_ID = "pi-015";
-const SARAH_PROCUREMENT_VISIBLE_KEY = "hexa:procurement:sarah-visible";
-
-function isSarahProcurementVisible(): boolean {
-  if (typeof window === "undefined") return false;
-  return window.localStorage.getItem(SARAH_PROCUREMENT_VISIBLE_KEY) === "1";
-}
 
 export default function ProcurementQueue() {
   const [search, setSearch] = useState("");
@@ -86,10 +79,7 @@ export default function ProcurementQueue() {
   const [attentionOnly, setAttentionOnly] = useState(false);
 
   const [items, setItems] = useState<ProcurementItem[]>(() => {
-    const ids = ["pi-001", "pi-013", "pi-004", "pi-011", "pi-006"];
-    if (isSarahProcurementVisible()) {
-      ids.splice(3, 0, SARAH_PROCUREMENT_ITEM_ID);
-    }
+    const ids = ["pi-001", "pi-013", "pi-004", SARAH_PROCUREMENT_ITEM_ID, "pi-011", "pi-006"];
     return ids.map((id) => procurementItems.find((i) => i.id === id)!).filter(Boolean);
   });
 
@@ -314,7 +304,7 @@ export default function ProcurementQueue() {
                         {item.source === "erp_alert"
                           ? "ERP Flag"
                           : item.source === "manual_request"
-                            ? `Requested by ${item.requestedBy}`
+                            ? `Email from ${item.requestedBy}`
                             : `Suggested by ${item.requestedBy}`}
                       </p>
                     </div>
@@ -369,13 +359,7 @@ export default function ProcurementQueue() {
         </div>
       </ScrollArea>
 
-      {selectedItem && selectedItem.source === "manual_request" ? (
-        <ManualRequestDemoPanel
-          item={selectedItem}
-          onClose={() => setSelectedItemId(null)}
-          onItemUpdate={handleItemUpdate}
-        />
-      ) : selectedItem ? (
+      {selectedItem ? (
         <ItemDetailPanel
           item={selectedItem}
           onClose={() => setSelectedItemId(null)}

@@ -185,6 +185,7 @@ export default function ItemDetailPanel({ item: initialItem, onClose, onItemUpda
   }, [onClose]);
 
   const isEngineering = initialItem.source === "engineering_request";
+  const isEmailSourced = initialItem.source === "manual_request";
   const SourceIcon = isEngineering ? Wrench : Package;
   const days = getDaysOfStockRemaining(initialItem);
 
@@ -304,9 +305,13 @@ export default function ItemDetailPanel({ item: initialItem, onClose, onItemUpda
           ? `RFQ sent to ${rfqEntries.length} supplier${rfqEntries.length !== 1 ? "s" : ""} on ${rfq.sentAt ? formatShortDate(rfq.sentAt) : "—"}`
           : "RFQ sent to suppliers";
       case "flagged":
-        return initialItem.source === "erp_alert"
-          ? `ERP Flag — ${initialItem.priority} priority${days !== Infinity ? `, ${days}d of stock` : ""}`
-          : `Engineering request — ${initialItem.priority} priority, by ${initialItem.requestedBy}`;
+        if (initialItem.source === "erp_alert") {
+          return `ERP Flag — ${initialItem.priority} priority${days !== Infinity ? `, ${days}d of stock` : ""}`;
+        }
+        if (initialItem.source === "manual_request") {
+          return `Email from ${initialItem.requestedBy} — ${initialItem.priority} priority${days !== Infinity ? `, ${days}d of stock` : ""}`;
+        }
+        return `Engineering request — ${initialItem.priority} priority, by ${initialItem.requestedBy}`;
       default:
         return "";
     }
@@ -598,6 +603,7 @@ export default function ItemDetailPanel({ item: initialItem, onClose, onItemUpda
 
       return (
         <div className="space-y-4">
+          {isEmailSourced && <SourceEmailCard item={initialItem} />}
           {isEngineering ? (
             <EngineeringRequestDetails itemId={initialItem.id} />
           ) : (
@@ -664,6 +670,7 @@ export default function ItemDetailPanel({ item: initialItem, onClose, onItemUpda
 
     return (
       <div className="space-y-5">
+        {isEmailSourced && <SourceEmailCard item={initialItem} />}
         <InventorySection item={initialItem} />
         <StockTrendChart item={initialItem} />
 
@@ -777,6 +784,12 @@ export default function ItemDetailPanel({ item: initialItem, onClose, onItemUpda
                       Requested by {initialItem.requestedBy}
                     </span>
                   )}
+                  {isEmailSourced && initialItem.requestedBy && (
+                    <span className="inline-flex items-center gap-1.5">
+                      <Mail className="h-3.5 w-3.5" />
+                      Email from {initialItem.requestedBy}
+                    </span>
+                  )}
                 </div>
                 <p className="mt-2 text-[12px] text-muted-foreground/80 leading-relaxed max-w-2xl">
                   {initialItem.description}
@@ -868,6 +881,9 @@ const PO_FORMAT_TABS: { key: POSendFormat; label: string; icon: typeof Mail }[] 
   { key: "csv", label: "CSV", icon: Table2 },
 ];
 
+const PO_SHIP_TO_ADDRESS = "1500 Factory Lane, Dock 4, Milwaukee, WI 53201";
+const PO_PDF_PREVIEW_URL = "/po-match-q-2026-0047.pdf#toolbar=0&navpanes=0&scrollbar=0&view=FitH";
+
 function DraftPOInline({
   item,
   supplier,
@@ -889,18 +905,53 @@ function DraftPOInline({
   const fmt = (n: number) =>
     n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-  const [poFormat, setPOFormat] = useState<POSendFormat>("email");
+  const [poFormat, setPOFormat] = useState<POSendFormat>("pdf");
   const deliveryFormatted = new Date(deliveryDate + "T00:00:00").toLocaleDateString("en-US", {
     weekday: "short",
     month: "short",
     day: "numeric",
   });
 
-  const defaultPOBody = `Dear ${supplier.name} Team,\n\nPlease find the purchase order details below.\n\nItem: ${item.name}\nSKU: ${item.sku}\nQuantity: ${quantity.toLocaleString()}\nUnit Price: $${fmt(unitPrice)}\nTotal: $${fmt(total)}\n\nPayment terms: ${paymentTerms}\nExpected delivery: ${deliveryFormatted}\nDelivery address: 1500 Factory Lane, Dock 4, Milwaukee, WI 53201\n\nPlease confirm receipt and expected ship date.\n\nBest regards,\nHexa Procurement Team`;
+  const defaultPOBody = `Dear ${supplier.name} Team,\n\nPlease find the purchase order details below.\n\nItem: ${item.name}\nSKU: ${item.sku}\nQuantity: ${quantity.toLocaleString()}\nUnit Price: $${fmt(unitPrice)}\nTotal: $${fmt(total)}\n\nPayment terms: ${paymentTerms}\nExpected delivery: ${deliveryFormatted}\nDelivery address: ${PO_SHIP_TO_ADDRESS}\n\nPlease confirm receipt and expected ship date.\n\nBest regards,\nHexa Procurement Team`;
 
   const [poEmailTo, setPOEmailTo] = useState(supplierEmail);
   const [poEmailSubject, setPOEmailSubject] = useState(`Purchase Order — ${item.name} (${item.sku})`);
   const [poEmailBody, setPOEmailBody] = useState(defaultPOBody);
+
+  const emailComposer = (
+    <>
+      <div className="space-y-1.5 border-b border-border px-5 py-3.5">
+        <div className="flex items-baseline gap-3 text-[12px]">
+          <span className="w-12 shrink-0 text-right text-muted-foreground">To</span>
+          <input
+            value={poEmailTo}
+            onChange={(e) => setPOEmailTo(e.target.value)}
+            className="flex-1 bg-transparent text-foreground/85 outline-none focus:underline"
+          />
+        </div>
+        <div className="flex items-baseline gap-3 text-[12px]">
+          <span className="w-12 shrink-0 text-right text-muted-foreground">From</span>
+          <span className="text-foreground/85">procurement@hexamfg.com</span>
+        </div>
+        <div className="flex items-baseline gap-3 text-[12px]">
+          <span className="w-12 shrink-0 text-right text-muted-foreground">Subject</span>
+          <input
+            value={poEmailSubject}
+            onChange={(e) => setPOEmailSubject(e.target.value)}
+            className="flex-1 bg-transparent font-medium text-foreground/85 outline-none focus:underline"
+          />
+        </div>
+      </div>
+      <div className="px-5 py-4">
+        <textarea
+          value={poEmailBody}
+          onChange={(e) => setPOEmailBody(e.target.value)}
+          rows={poFormat === "pdf" ? 7 : 14}
+          className="w-full resize-y bg-transparent text-[12px] leading-relaxed text-foreground/75 outline-none"
+        />
+      </div>
+    </>
+  );
 
   return (
     <div className="border border-border bg-card">
@@ -922,91 +973,47 @@ function DraftPOInline({
           </button>
         ))}
         <span className="ml-auto text-[10px] text-muted-foreground">
-          {poFormat === "email" ? "Send as email body" : poFormat === "pdf" ? "Attach as PDF document" : "Attach as CSV spreadsheet"}
+          {poFormat === "email" ? "Send as email body" : poFormat === "pdf" ? "Attach PDF with email below" : "Attach as CSV spreadsheet"}
         </span>
       </div>
 
       {poFormat === "email" ? (
-        <>
-          <div className="space-y-1.5 border-b border-border px-5 py-3.5">
-            <div className="flex items-baseline gap-3 text-[12px]">
-              <span className="w-12 shrink-0 text-right text-muted-foreground">To</span>
-              <input
-                value={poEmailTo}
-                onChange={(e) => setPOEmailTo(e.target.value)}
-                className="flex-1 bg-transparent text-foreground/85 outline-none focus:underline"
-              />
-            </div>
-            <div className="flex items-baseline gap-3 text-[12px]">
-              <span className="w-12 shrink-0 text-right text-muted-foreground">From</span>
-              <span className="text-foreground/85">procurement@hexamfg.com</span>
-            </div>
-            <div className="flex items-baseline gap-3 text-[12px]">
-              <span className="w-12 shrink-0 text-right text-muted-foreground">Subject</span>
-              <input
-                value={poEmailSubject}
-                onChange={(e) => setPOEmailSubject(e.target.value)}
-                className="flex-1 bg-transparent font-medium text-foreground/85 outline-none focus:underline"
-              />
-            </div>
-          </div>
-          <div className="px-5 py-4">
-            <textarea
-              value={poEmailBody}
-              onChange={(e) => setPOEmailBody(e.target.value)}
-              rows={14}
-              className="w-full resize-y bg-transparent text-[12px] leading-relaxed text-foreground/75 outline-none"
-            />
-          </div>
-        </>
+        emailComposer
       ) : poFormat === "pdf" ? (
         <>
-          <div className="grid grid-cols-2 gap-px border-b border-border bg-border">
-            <div className="bg-card px-5 py-3.5">
-              <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Supplier</p>
-              <p className="mt-1.5 text-[13px] font-medium text-foreground/85">{supplier.name}</p>
-              <p className="mt-0.5 text-[11px] text-muted-foreground">{supplierEmail}</p>
-              <p className="text-[11px] text-muted-foreground">{supplier.contactPhone}</p>
-            </div>
-            <div className="bg-card px-5 py-3.5">
-              <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Ship To</p>
-              <p className="mt-1.5 text-[13px] text-foreground/85">1500 Factory Lane, Dock 4, Milwaukee, WI 53201</p>
-            </div>
-          </div>
-          <div className="border-b border-border px-5 py-3.5">
-            <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground mb-2.5">Line Items</p>
-            <div className="border border-border">
-              <div className="flex items-center bg-muted/30 px-4 py-2">
-                <span className="flex-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Item</span>
-                <span className="w-24 text-center text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Qty</span>
-                <span className="w-28 text-right text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Unit Price</span>
-                <span className="w-28 text-right text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Total</span>
+          <div className="border-b border-border bg-muted/20 px-5 py-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[12px] font-medium text-foreground/85">
+                  purchase-order-{item.sku.toLowerCase()}.pdf
+                </p>
+                <p className="mt-0.5 text-[10px] text-muted-foreground">
+                  Attached to the email message below
+                </p>
               </div>
-              <div className="flex items-center border-t border-border px-4 py-3">
-                <div className="flex-1">
-                  <p className="text-[13px] font-medium text-foreground/85">{item.name}</p>
-                  <p className="text-[11px] text-muted-foreground">{item.sku}</p>
-                </div>
-                <span className="w-24 text-center text-[13px] font-medium tabular-nums text-foreground/70">{quantity.toLocaleString()}</span>
-                <span className="w-28 text-right text-[13px] font-medium tabular-nums text-foreground/70">${fmt(unitPrice)}</span>
-                <span className="w-28 text-right text-[13px] font-semibold tabular-nums text-foreground">${fmt(total)}</span>
-              </div>
+              <a
+                href={PO_PDF_PREVIEW_URL}
+                target="_blank"
+                rel="noreferrer"
+                className="text-[11px] font-medium text-muted-foreground transition-colors hover:text-foreground"
+              >
+                Open PDF
+              </a>
             </div>
           </div>
-          <div className="grid grid-cols-3 gap-px bg-border">
-            <div className="bg-card px-5 py-3.5">
-              <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Payment Terms</p>
-              <p className="mt-1 text-[13px] font-medium text-foreground/85">{paymentTerms}</p>
-            </div>
-            <div className="bg-card px-5 py-3.5">
-              <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Expected Delivery</p>
-              <p className="mt-1 text-[13px] font-medium text-foreground/85">{deliveryFormatted}</p>
-            </div>
-            <div className="bg-card px-5 py-3.5">
-              <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Total Value</p>
-              <p className="mt-1 text-[13px] font-semibold text-foreground">${fmt(total)}</p>
+          <div className="border-b border-border bg-background/40 px-5 py-4">
+            <div className="mx-auto max-w-[420px] overflow-hidden border border-border bg-white shadow-sm">
+              <iframe
+                src={PO_PDF_PREVIEW_URL}
+                title={`Purchase order PDF for ${item.sku}`}
+                className="h-[280px] w-full border-0"
+              />
             </div>
           </div>
+          <div className="border-b border-border bg-muted/20 px-5 py-3">
+            <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Email Message</p>
+          </div>
+          {emailComposer}
         </>
       ) : (
         <>
@@ -1046,6 +1053,57 @@ function DraftPOInline({
           </div>
         </>
       )}
+    </div>
+  );
+}
+
+function SourceEmailCard({ item }: { item: ProcurementItem }) {
+  const senderName = item.requestedBy || "Team member";
+  const senderHandle = senderName.toLowerCase().replace(/[^a-z]+/g, ".").replace(/^\.|\.$/g, "");
+  const senderEmail = senderHandle ? `${senderHandle}@hexamfg.com` : "team@hexamfg.com";
+  const flaggedDate = new Date(item.flaggedAt).toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+
+  return (
+    <div className="border border-border bg-card shadow-sm">
+      <div className="flex items-center gap-2.5 border-b border-border px-5 py-3.5">
+        <Mail className="h-4 w-4 text-foreground/70" />
+        <div>
+          <h4 className="text-[13px] font-semibold text-foreground">Source Email</h4>
+          <p className="text-[11px] text-muted-foreground">Forwarded by {senderName} to procurement</p>
+        </div>
+      </div>
+      <div className="space-y-1.5 border-b border-border px-5 py-3.5">
+        <div className="flex items-baseline gap-3 text-[12px]">
+          <span className="w-12 shrink-0 text-right text-muted-foreground">From</span>
+          <span className="text-foreground/85">{senderName} &lt;{senderEmail}&gt;</span>
+        </div>
+        <div className="flex items-baseline gap-3 text-[12px]">
+          <span className="w-12 shrink-0 text-right text-muted-foreground">To</span>
+          <span className="text-foreground/85">procurement@hexamfg.com</span>
+        </div>
+        <div className="flex items-baseline gap-3 text-[12px]">
+          <span className="w-12 shrink-0 text-right text-muted-foreground">Subject</span>
+          <span className="font-medium text-foreground/85">Low stock: {item.sku}</span>
+        </div>
+        <div className="flex items-baseline gap-3 text-[12px]">
+          <span className="w-12 shrink-0 text-right text-muted-foreground">Date</span>
+          <span className="text-foreground/85">{flaggedDate}</span>
+        </div>
+      </div>
+      <div className="px-5 py-4">
+        <p className="text-[12px] leading-relaxed text-foreground/75">
+          Hi Procurement,<br /><br />
+          ERP is showing {item.sku} ({item.name}) is down to {item.currentStock.toLocaleString()} on hand against a {item.reorderPoint.toLocaleString()} reorder point. Can someone restock this with the preferred supplier before next week&apos;s builds?<br /><br />
+          Thanks,<br />
+          {senderName}
+        </p>
+      </div>
     </div>
   );
 }

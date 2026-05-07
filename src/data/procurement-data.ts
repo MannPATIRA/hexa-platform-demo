@@ -414,8 +414,8 @@ export const procurementItems: ProcurementItem[] = [
     name: '1/4"-20 x 1" Socket Head Cap Screw — Plain',
     description: "Grade 8 socket head cap screw, 1/4-20 thread, 1 inch length, plain (uncoated) finish. ASME B18.3.",
     source: "erp_alert",
-    status: "rfq_sent",
-    priority: "high",
+    status: "flagged",
+    priority: "critical",
     currentStock: 320,
     reorderPoint: 1500,
     maxStock: 12000,
@@ -428,13 +428,12 @@ export const procurementItems: ProcurementItem[] = [
     attachments: [],
     preferredSupplierId: "sup-002",
     stockHistory: generateStockHistory(320, 165, 90),
-    activeRfqId: "rfq-003",
-  }, // rfq_sent — waiting for supplier quotes
+  }, // flagged — critical ERP stockout risk
   {
     id: "pi-015",
     sku: "DTI-SQT-12",
     name: 'DTI Squirter Direct Tension Indicator 1/2"',
-    description: 'TurnaSure Squirter direct tension indicator, 1/2 inch, for use with A325/A490 structural bolts. Specialty item — manual restock request from Apex QA.',
+    description: 'TurnaSure Squirter direct tension indicator, 1/2 inch, for use with A325/A490 structural bolts. Sarah Chen flagged this SKU by email after seeing ERP stock below the reorder point.',
     source: "manual_request",
     status: "flagged",
     priority: "high",
@@ -564,6 +563,7 @@ export const supplierItemHistories: SupplierItemHistory[] = [
 
   // pi-013: 1/4-20 x 1 SHCS — Earnest primary, Bossard backup
   { id: "sih-020", supplierId: "sup-002", itemId: "pi-013", lastOrderDate: "2025-12-01", totalOrders12mo: 9, avgUnitPrice: 0.14, lastUnitPrice: 0.15, previousUnitPrice: 0.13, avgLeadTimeDays: 4, onTimeDeliveryRate: 95, defectRate: 0.4, reliabilityScore: 92, moq: 1000, paymentTerms: "Net 45", notes: "Standard SHCS in volume. No PPAP needed." },
+  { id: "sih-027", supplierId: "sup-005", itemId: "pi-013", lastOrderDate: "2025-10-18", totalOrders12mo: 3, avgUnitPrice: 0.16, lastUnitPrice: 0.17, previousUnitPrice: 0.16, avgLeadTimeDays: 7, onTimeDeliveryRate: 91, defectRate: 0.2, reliabilityScore: 86, moq: 500, paymentTerms: "Net 30", notes: "Backup source with lower MOQ. Good RFQ candidate when Earnest stock is constrained." },
 
   // pi-014: Threaded rod B7
   { id: "sih-021", supplierId: "sup-003", itemId: "pi-014", lastOrderDate: "2026-01-22", totalOrders12mo: 5, avgUnitPrice: 18.50, lastUnitPrice: 19.20, previousUnitPrice: 17.80, avgLeadTimeDays: 8, onTimeDeliveryRate: 96, defectRate: 0.2, reliabilityScore: 94, moq: 100, paymentTerms: "Net 30", notes: "Würth holds B7 in 6 ft random lengths. Mill cert per shipment." },

@@ -46,7 +46,7 @@ const NODE_TITLES: Record<NodeId, string> = {
 };
 
 const STATIC_SUMMARIES: Partial<Record<NodeId, string>> = {
-  email_parsed: "3 line items parsed from Sarah Chen's email — 94% confidence",
+  email_parsed: "1 low-SKU restock request parsed from Sarah Chen's email — 98% confidence",
   rfq_generated: "RFQ auto-generated — 3 line items, delivery by Mar 25",
   identifying_suppliers: "RFQ sent to 5 suppliers — 4 ERP approved, 1 recommended",
   quotes_received: "4 quotes received — $2,028 to $2,334 range",
@@ -94,6 +94,10 @@ const NODE_STATUS_MAP: Record<NodeId, ProcurementStatus> = {
   confirmation: "po_sent",
   shipment_tracking: "shipped",
 };
+
+const EMAIL_PARSED_PARTS = [
+  { line: 1, name: 'DTI Squirter Direct Tension Indicator 1/2"', sku: "DTI-SQT-12", qty: 1500, uom: "EA" },
+];
 
 const PARSED_PARTS = [
   { line: 1, name: "Pneumatic Cylinder 40mm Bore × 200mm Stroke", sku: "PNE-CYL-40-200", qty: 12, uom: "EA" },
@@ -433,7 +437,7 @@ export default function ManualRequestDemoPanel({ item, onClose, onItemUpdate }: 
                 <div className="mt-2 flex flex-wrap items-center gap-4 text-[13px] text-muted-foreground">
                   <span className="inline-flex items-center gap-1.5">
                     <User className="h-3.5 w-3.5" />
-                    Requested by {item.requestedBy}
+                    Email from {item.requestedBy}
                   </span>
                   <span className="inline-flex items-center gap-1.5">
                     <Calendar className="h-3.5 w-3.5" />
@@ -613,7 +617,7 @@ function EmailParsedContent() {
             <p className="text-[11px] text-muted-foreground">Parsed automatically from incoming email</p>
           </div>
           <Badge variant="outline" className="ml-auto border-emerald-500/30 bg-emerald-500/10 text-emerald-700 text-[10px] font-semibold">
-            94% Confidence
+            98% Confidence
           </Badge>
         </div>
         <div className="space-y-1.5 border-b border-border px-5 py-3.5">
@@ -627,7 +631,7 @@ function EmailParsedContent() {
           </div>
           <div className="flex items-baseline gap-3 text-[12px]">
             <span className="w-12 shrink-0 text-right text-muted-foreground">Subject</span>
-            <span className="font-medium text-foreground/85">Parts needed — Packaging Line 2 actuator replacement</span>
+            <span className="font-medium text-foreground/85">Low stock: DTI-SQT-12</span>
           </div>
           <div className="flex items-baseline gap-3 text-[12px]">
             <span className="w-12 shrink-0 text-right text-muted-foreground">Date</span>
@@ -637,14 +641,11 @@ function EmailParsedContent() {
         <div className="px-5 py-4">
           <p className="text-[12px] leading-relaxed text-foreground/75">
             Hi Procurement,<br /><br />
-            We need the following parts for the Packaging Line 2 actuator replacement project. The current cylinders are failing intermittently and we need replacements before the April production ramp.<br /><br />
-            - 12× Pneumatic Cylinder, 40mm bore, 200mm stroke (double-acting, magnetic piston)<br />
-            - 12× Mounting bracket kits for the above cylinders<br />
-            - 6× 5/3 way solenoid valves, ¼&quot; NPT ports<br /><br />
-            Target delivery by end of March if possible. Let me know if you need any additional specs.<br /><br />
+            ERP is showing DTI-SQT-12 is down to 120 on hand against a 400 reorder point. This is the TurnaSure Squirter 1/2&quot; DTI we use with the A325/A490 kits, and QA wants stock back above the minimum before next week's structural bolt builds.<br /><br />
+            Can you source 1,500 EA and keep Kanebridge as the preferred supplier if they can meet the date?<br /><br />
             Thanks,<br />
             Sarah Chen<br />
-            <span className="text-muted-foreground">Production Engineering</span>
+            <span className="text-muted-foreground">Quality Engineering</span>
           </p>
         </div>
       </div>
@@ -660,20 +661,45 @@ function EmailParsedContent() {
               <th className="px-5 py-2.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground w-10">#</th>
               <th className="px-5 py-2.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Item</th>
               <th className="px-5 py-2.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">SKU</th>
+              <th className="px-5 py-2.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground text-right">ERP Stock</th>
               <th className="px-5 py-2.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground text-right">Qty</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
-            {PARSED_PARTS.map((part) => (
+            {EMAIL_PARSED_PARTS.map((part) => (
               <tr key={part.line}>
                 <td className="px-5 py-3 text-[12px] text-muted-foreground">{part.line}</td>
                 <td className="px-5 py-3 text-[13px] font-medium text-foreground/85">{part.name}</td>
                 <td className="px-5 py-3 text-[12px] font-mono text-foreground/70">{part.sku}</td>
+                <td className="px-5 py-3 text-[13px] text-amber-700 text-right tabular-nums">120 / 400</td>
                 <td className="px-5 py-3 text-[13px] text-foreground/70 text-right tabular-nums">{part.qty} {part.uom}</td>
               </tr>
             ))}
           </tbody>
         </table>
+      </div>
+
+      <div className="border border-border bg-card">
+        <div className="flex items-center gap-2.5 border-b border-border px-5 py-3.5">
+          <ShieldCheck className="h-4 w-4 text-foreground/70" />
+          <h3 className="text-[13px] font-semibold text-foreground">ERP Validation Checks</h3>
+        </div>
+        <div className="grid grid-cols-2 gap-px bg-border">
+          {[
+            ["Item master", "DTI-SQT-12 matched active SKU"],
+            ["Inventory", "120 on hand vs 400 reorder point"],
+            ["Supplier", "Kanebridge approved for this SKU"],
+            ["Quantity", "1,500 EA meets MOQ and stocking target"],
+          ].map(([label, value]) => (
+            <div key={label} className="bg-card px-5 py-3.5">
+              <div className="flex items-center gap-2">
+                <Check className="h-3.5 w-3.5 text-emerald-600" />
+                <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{label}</p>
+              </div>
+              <p className="mt-1.5 text-[13px] font-medium text-foreground/85">{value}</p>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
