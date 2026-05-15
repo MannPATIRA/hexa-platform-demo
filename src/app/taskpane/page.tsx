@@ -539,24 +539,11 @@ function TaskpaneContent() {
 
         {state === "ready" && (
           <div className="space-y-4">
-            <div className="flex items-center gap-3">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="/icons/hexa-logo.png"
-                alt="Hexa"
-                width={32}
-                height={32}
-                className="size-8 shrink-0 invert"
-                aria-hidden
-              />
-              <div>
-                <p className="text-[12px] text-muted-foreground">
-                  {isSarahProcurementWorkflow
-                    ? "Create a new procurement order from this email."
-                    : "Create a new order from this email&apos;s attachments."}
-                </p>
-              </div>
-            </div>
+            <p className="text-[12px] text-muted-foreground">
+              {isSarahProcurementWorkflow
+                ? "Create a new procurement order from this email."
+                : "Create a new order from this email's attachments."}
+            </p>
 
             {(senderName || senderEmail) && (
               <div className="border border-border bg-card p-3">
