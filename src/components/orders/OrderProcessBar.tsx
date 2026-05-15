@@ -16,7 +16,7 @@ const STANDARD_PIPELINE: PipelineStep[] = [
   { stage: "rfq_received", label: "RFQ", color: "border-blue-500 bg-blue-500 text-white", activeText: "text-blue-700" },
   { stage: "quote_sent", label: "Quote", color: "border-blue-500 bg-blue-500 text-white", activeText: "text-blue-700" },
   { stage: "po_received", label: "PO", color: "border-blue-500 bg-blue-500 text-white", activeText: "text-blue-700" },
-  { stage: "pushed_to_mrp", label: "MRP", color: "border-blue-500 bg-blue-500 text-white", activeText: "text-blue-700" },
+  { stage: "pushed_to_mrp", label: "ERP", color: "border-blue-500 bg-blue-500 text-white", activeText: "text-blue-700" },
   { stage: "shipped", label: "Shipping", color: "border-blue-500 bg-blue-500 text-white", activeText: "text-blue-700" },
   { stage: "delivered", label: "Delivered", color: "border-blue-500 bg-blue-500 text-white", activeText: "text-blue-700" },
 ];
@@ -27,7 +27,7 @@ const QUOTE_BUILDER_PIPELINE: PipelineStep[] = [
   { stage: "inventory_check", label: "Inventory", color: "border-blue-500 bg-blue-500 text-white", activeText: "text-blue-700" },
   { stage: "quote_draft", label: "Quote", color: "border-blue-500 bg-blue-500 text-white", activeText: "text-blue-700" },
   { stage: "po_received", label: "PO", color: "border-blue-500 bg-blue-500 text-white", activeText: "text-blue-700" },
-  { stage: "pushed_to_mrp", label: "MRP", color: "border-blue-500 bg-blue-500 text-white", activeText: "text-blue-700" },
+  { stage: "pushed_to_mrp", label: "ERP", color: "border-blue-500 bg-blue-500 text-white", activeText: "text-blue-700" },
   { stage: "shipped", label: "Shipping", color: "border-blue-500 bg-blue-500 text-white", activeText: "text-blue-700" },
   { stage: "delivered", label: "Delivered", color: "border-blue-500 bg-blue-500 text-white", activeText: "text-blue-700" },
 ];

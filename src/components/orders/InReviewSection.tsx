@@ -123,10 +123,10 @@ export function InReviewSection({ order }: { order: Order }) {
           className="inline-flex items-center gap-2 bg-foreground px-4 py-2.5 text-[12px] font-medium text-background transition-opacity hover:opacity-90"
         >
           <ArrowRight className="h-3.5 w-3.5" />
-          Push to MRP
+          Push to ERP
         </button>
         <p className="text-[11px] text-muted-foreground">
-          Review items and push to MRP when ready
+          Review items and push to ERP when ready
         </p>
       </div>
     </div>
